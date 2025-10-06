@@ -9,14 +9,19 @@ export const CATEGORY_LABELS: Record<CategorySlug, string> = {
   mep: "설비/전기/배관",
 };
 
-// types.ts (Posting 타입에 content?: string; 추가)
+// 시작일 필터 그룹
+export type StartGroup = "today" | "dayAfterTomorrow" | "plus3";
+
+// 게시글 타입
 export type Posting = {
   id: string;
   title: string;
-  category: "rebar_form_concrete" | "interior_finish" | "mep";
+  category: CategorySlug;
   wage_type: "day" | "hour" | "month";
   wage_amount: number;
   address?: string;
+  dong?: string; // ← 동 단위 필터용
+  start_date?: string; // ← ISO (예: 2025-10-06T00:00:00.000Z)
   flags?: {
     today?: boolean;
     night?: boolean;
@@ -24,7 +29,7 @@ export type Posting = {
     lodging?: boolean;
   };
   created_at: string;
-  content?: string; // ← 추가
+  content?: string;
 };
 
 // ===== 파트너 배너 =====
