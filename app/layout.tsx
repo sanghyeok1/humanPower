@@ -1,5 +1,6 @@
 import "../styles/globals.css";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { ReactNode } from "react";
 
 export const metadata = {
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <main style={{ maxWidth: 960, margin: "0 auto", padding: "16px" }}>
           {children}
         </main>
+        <Footer />
       </body>
     </html>
   );

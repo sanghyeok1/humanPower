@@ -80,6 +80,9 @@ export default function PartnerBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
       <div className="partner-banner__inner">
         <div className="partner-banner__header">
           <h2>현장 파트너 광고</h2>
+          <h2>
+            현장 파트너 광고 <span className="ad-badge">광고</span>
+          </h2>
           <p>{subtitle}</p>
         </div>
 
