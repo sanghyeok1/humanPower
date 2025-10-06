@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import HeaderClient from "@/components/HeaderClient";
 
 export default async function Header() {
   const jar = await cookies();
@@ -12,6 +11,7 @@ export default async function Header() {
     "use server";
     const cj = await cookies();
     cj.delete("demo_login");
+    cj.delete("demo_role"); // ← 역할 쿠키도 삭제
     redirect("/");
   }
 
@@ -33,7 +33,15 @@ export default async function Header() {
             </form>
           </nav>
         ) : (
-          <HeaderClient />
+          <nav className="nav">
+            {/* 지금은 /auth 도입 안 했으니 /login으로 */}
+            <Link href="/login" className="nav-link">
+              로그인
+            </Link>
+            <Link href="/signup" className="btn btn-primary">
+              회원가입
+            </Link>
+          </nav>
         )}
       </div>
     </header>
