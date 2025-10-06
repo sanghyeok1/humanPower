@@ -1,6 +1,6 @@
 // app/post/[id]/page.tsx
-import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
+import { isLoggedIn } from "@/lib/auth"; // ✅ 추가
 import { POSTINGS } from "@/data/postings";
 import { CATEGORY_LABELS, type Posting } from "@/types";
 
@@ -24,48 +24,43 @@ function labelStart(start?: string) {
 }
 
 function estimatePay(p: Posting) {
-  // 데모 가정: 시급=8h/일, 월=22일/월, 주=6일/주
   let perDay = 0;
   if (p.wage_type === "day") perDay = p.wage_amount;
   else if (p.wage_type === "hour") perDay = p.wage_amount * 8;
   else if (p.wage_type === "month") perDay = Math.round(p.wage_amount / 22);
-
   const perWeek = perDay * 6;
   const perMonth = perDay * 22;
   return { perDay, perWeek, perMonth };
 }
 
 function completeness(p: Posting) {
-  // 아주 단순한 데모 점수 (100점 만점)
   let score = 0;
-  if (p.wage_type && p.wage_amount > 0) score += 20; // 임금
-  if (p.start_date) score += 10; // 시작일
-  if (p.dong || p.address) score += 15; // 위치
+  if (p.wage_type && p.wage_amount > 0) score += 20;
+  if (p.start_date) score += 10;
+  if (p.dong || p.address) score += 15;
   const flags = p.flags || {};
   const flagCount = ["today", "night", "beginner_ok", "lodging"].filter(
     (k) => (flags as any)[k]
   ).length;
-  score += Math.min(15, flagCount * 5); // 조건 배지
-  if (p.content && p.content.trim().length >= 10) score += 20; // 내용
-  if (p.category) score += 10; // 카테고리
-  if (p.created_at) score += 10; // 등록일
+  score += Math.min(15, flagCount * 5);
+  if (p.content && p.content.trim().length >= 10) score += 20;
+  if (p.category) score += 10;
+  if (p.created_at) score += 10;
   return Math.max(0, Math.min(100, score));
 }
 
 export default async function PostDetailPage({
   params,
 }: {
-  // ✅ Next 15: params는 Promise
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params; // ✅ 먼저 await 해서 id 추출
-  const jar = await cookies(); // ✅ cookies()도 Promise
-  const isLoggedIn = jar.get("demo_login")?.value === "1";
+  const { id } = await params; // ✅ Next 15: await 필요
+  const loggedIn = await isLoggedIn(); // ✅ JWT or 데모
 
   const post = POSTINGS.find((p) => p.id === id);
   if (!post) notFound();
 
-  if (!isLoggedIn) {
+  if (!loggedIn) {
     redirect(`/login?returnTo=${encodeURIComponent(`/post/${post.id}`)}`);
   }
 
