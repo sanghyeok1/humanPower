@@ -1,4 +1,6 @@
 // types.ts
+
+// ===== 카테고리/게시판 =====
 export type CategorySlug = "rebar_form_concrete" | "interior_finish" | "mep";
 
 export const CATEGORY_LABELS: Record<CategorySlug, string> = {
@@ -23,7 +25,7 @@ export type Posting = {
   created_at: string;
 };
 
-// (이미 있으면 유지) 파트너 타입
+// ===== 파트너 배너 =====
 export type Partner = {
   id: string;
   name: string;
@@ -34,4 +36,5 @@ export type Partner = {
   address?: string;
   tags?: string[];
 };
+
 export type PartnerWithDistance = Partner & { distanceKm: number };
