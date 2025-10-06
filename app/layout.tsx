@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { ReactNode } from "react";
 
 export const metadata = {
-  title: "오늘 일감 – 부천",
+  title: "바로일감 – 부천",
   description: "동 단위 현장 파트너 광고 데모",
 };
 
