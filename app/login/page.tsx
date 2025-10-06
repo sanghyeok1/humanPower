@@ -1,21 +1,44 @@
+// app/login/page.tsx
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export default function LoginPage() {
-  async function demoLogin() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: { returnTo?: string };
+}) {
+  async function demoLogin(formData: FormData) {
     "use server";
-    const jar = await cookies(); // ← await
+    const jar = await cookies();
     jar.set("demo_login", "1", {
       path: "/",
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 7,
     });
-    redirect("/");
+    const next = (formData.get("returnTo") as string | null) ?? "/";
+    redirect(next && next.startsWith("/") ? next : "/");
   }
 
   return (
-    <form action={demoLogin}>
-      <button type="submit">데모 로그인</button>
-    </form>
+    <div style={{ maxWidth: 420, margin: "40px auto" }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800 }}>로그인</h1>
+      <p style={{ color: "#666" }}>
+        데모 전용: 실제 인증 대신 쿠키를 심습니다.
+      </p>
+      <form action={demoLogin}>
+        <input
+          type="hidden"
+          name="returnTo"
+          value={searchParams.returnTo ?? ""}
+        />
+        <button
+          type="submit"
+          className="btn"
+          style={{ width: "100%", marginTop: 12 }}
+        >
+          데모 로그인
+        </button>
+      </form>
+    </div>
   );
 }
