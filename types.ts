@@ -9,10 +9,11 @@ export const CATEGORY_LABELS: Record<CategorySlug, string> = {
   mep: "설비/전기/배관",
 };
 
+// types.ts (Posting 타입에 content?: string; 추가)
 export type Posting = {
   id: string;
   title: string;
-  category: CategorySlug;
+  category: "rebar_form_concrete" | "interior_finish" | "mep";
   wage_type: "day" | "hour" | "month";
   wage_amount: number;
   address?: string;
@@ -23,6 +24,7 @@ export type Posting = {
     lodging?: boolean;
   };
   created_at: string;
+  content?: string; // ← 추가
 };
 
 // ===== 파트너 배너 =====
