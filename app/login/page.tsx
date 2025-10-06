@@ -2,11 +2,15 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export default function LoginPage({
+export default async function LoginPage({
+  // ❗ Next 15: searchParams는 Promise 타입으로 받고
   searchParams,
 }: {
-  searchParams: { returnTo?: string };
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
+  // ❗ 반드시 await 후에 사용
+  const sp = await searchParams;
+
   async function demoLogin(formData: FormData) {
     "use server";
     const jar = await cookies();
@@ -15,6 +19,7 @@ export default function LoginPage({
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 7,
     });
+
     const next = (formData.get("returnTo") as string | null) ?? "/";
     redirect(next && next.startsWith("/") ? next : "/");
   }
@@ -25,12 +30,9 @@ export default function LoginPage({
       <p style={{ color: "#666" }}>
         데모 전용: 실제 인증 대신 쿠키를 심습니다.
       </p>
+
       <form action={demoLogin}>
-        <input
-          type="hidden"
-          name="returnTo"
-          value={searchParams.returnTo ?? ""}
-        />
+        <input type="hidden" name="returnTo" value={sp.returnTo ?? ""} />
         <button
           type="submit"
           className="btn"
