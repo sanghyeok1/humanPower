@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import HeaderClient from "@/components/HeaderClient";
 
 export default async function Header() {
   const jar = await cookies();
@@ -23,24 +24,17 @@ export default async function Header() {
           <span className="brand__sub">부천 · 동 단위</span>
         </Link>
 
-        <nav className="nav">
-          {isLoggedIn ? (
+        {isLoggedIn ? (
+          <nav className="nav">
             <form action={logout}>
               <button type="submit" className="btn btn-ghost">
                 로그아웃
               </button>
             </form>
-          ) : (
-            <>
-              <Link href="/login" className="nav-link">
-                로그인
-              </Link>
-              <Link href="/signup" className="btn btn-primary">
-                회원가입
-              </Link>
-            </>
-          )}
-        </nav>
+          </nav>
+        ) : (
+          <HeaderClient />
+        )}
       </div>
     </header>
   );
