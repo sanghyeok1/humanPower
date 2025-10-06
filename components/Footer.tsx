@@ -6,7 +6,7 @@ export default function Footer() {
 
   // TODO: 아래 사업자 정보는 실제 값으로 교체
   const BIZ = {
-    brand: "오늘 일감",
+    brand: "바로일감",
     corpName: "㈜예시컴퍼니", // 상호(법인명)
     owner: "홍길동", // 대표자
     bizNo: "000-00-00000", // 사업자등록번호

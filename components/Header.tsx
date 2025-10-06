@@ -21,7 +21,7 @@ export default async function Header() {
       <div className="site-header__inner">
         <Link href="/" className="brand">
           <span className="brand__dot" />
-          <span className="brand__title">오늘 일감</span>
+          <span className="brand__title">바로일감</span>
           <span className="brand__sub">부천 · 동 단위</span>
         </Link>
 

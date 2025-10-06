@@ -431,3 +431,29 @@ a:hover {
   padding: 4px 8px;
   border-radius: 999px;
 }
+
+/* --- Pagination --- */
+.pagination {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.page-btn {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+.page-btn:hover {
+  background: #f3f4f6;
+}
+.page-btn--active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}

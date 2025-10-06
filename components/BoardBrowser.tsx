@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CATEGORY_LABELS, type CategorySlug } from "@/types";
 import { POSTINGS } from "@/data/postings";
 
@@ -16,23 +16,23 @@ type DongFilter = typeof DONG_ALL | string;
 const START_ALL = "all" as const;
 type StartFilter = typeof START_ALL | "today" | "dayAfterTomorrow" | "plus3";
 
+const PAGE_SIZE = 10;
+
 // ---- 날짜 그룹 계산 (당일/다다음날/3일후) ----
 function startGroupOf(dateStr?: string): StartFilter | "other" {
   if (!dateStr) return "other";
   const start = new Date(dateStr);
   const today = new Date();
-  // 날짜만 비교(자정 기준)
   const floor = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const diffDays = Math.round((floor(start) - floor(today)) / 86400000);
-
   if (diffDays === 0) return "today";
   if (diffDays === 2) return "dayAfterTomorrow";
   if (diffDays === 3) return "plus3";
   return "other";
 }
 
-// ---- 동 옵션 목록 (더미데이터에서 추출) ----
+// ---- 동 옵션 목록 ----
 const DONG_OPTIONS: string[] = Array.from(
   new Set(POSTINGS.map((p) => p.dong).filter((d): d is string => !!d))
 );
@@ -52,15 +52,19 @@ const START_LABELS: Record<StartFilter, string> = {
 };
 
 export default function BoardBrowser({ isLoggedIn }: { isLoggedIn: boolean }) {
-  // 1) 분야
+  // 1) 분야, 2) 동, 3) 시작일
   const [cat, setCat] = useState<CatFilter>("all");
-  // 2) 동
   const [dong, setDong] = useState<DongFilter>("all");
-  // 3) 시작일
   const [start, setStart] = useState<StartFilter>("all");
+  // 4) 페이지
+  const [page, setPage] = useState(1);
 
-  // 필터 적용
-  const items = useMemo(() => {
+  // 필터가 바뀔 때 페이지를 1로 리셋
+  useEffect(() => {
+    setPage(1);
+  }, [cat, dong, start]);
+
+  const filtered = useMemo(() => {
     return [...POSTINGS]
       .filter((p) => (cat === "all" ? true : p.category === cat))
       .filter((p) => (dong === "all" ? true : p.dong === dong))
@@ -70,6 +74,10 @@ export default function BoardBrowser({ isLoggedIn }: { isLoggedIn: boolean }) {
       })
       .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
   }, [cat, dong, start]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const startIdx = (page - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(startIdx, startIdx + PAGE_SIZE);
 
   return (
     <section>
@@ -127,7 +135,7 @@ export default function BoardBrowser({ isLoggedIn }: { isLoggedIn: boolean }) {
         )}
       </div>
 
-      {/* 안내 (목록은 공개, 클릭 시 로그인 유도) */}
+      {/* 로그인 안내 */}
       {!isLoggedIn && (
         <div className="notice" style={{ marginTop: 10 }}>
           로그인 전에는 목록만 볼 수 있어요. 항목을 클릭하면 로그인 페이지로
@@ -135,12 +143,12 @@ export default function BoardBrowser({ isLoggedIn }: { isLoggedIn: boolean }) {
         </div>
       )}
 
-      {/* 목록 */}
+      {/* 목록(10개씩) */}
       <ul className="posting-list" style={{ marginTop: 12 }}>
-        {items.length === 0 ? (
+        {pageItems.length === 0 ? (
           <li className="posting-item empty">조건에 맞는 공고가 없습니다.</li>
         ) : (
-          items.map((p) => {
+          pageItems.map((p) => {
             const target = `/post/${p.id}`;
             const href = isLoggedIn
               ? target
@@ -174,6 +182,25 @@ export default function BoardBrowser({ isLoggedIn }: { isLoggedIn: boolean }) {
           })
         )}
       </ul>
+
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <nav className="pagination" aria-label="Pagination">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              className={`page-btn ${p === page ? "page-btn--active" : ""}`}
+              onClick={() => {
+                setPage(p);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              aria-current={p === page ? "page" : undefined}
+            >
+              {p}
+            </button>
+          ))}
+        </nav>
+      )}
     </section>
   );
 }
