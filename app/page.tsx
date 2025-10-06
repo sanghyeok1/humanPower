@@ -1,7 +1,7 @@
 // app/page.tsx
 import { cookies } from "next/headers";
-import BoardBrowser from "@/components/BoardBrowser";
 import PartnerBanner from "@/components/PartnerBanner";
+import BoardBrowser from "@/components/BoardBrowser";
 
 export default async function HomePage() {
   const jar = await cookies();
@@ -9,14 +9,14 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* 카테고리 칩 + 게시판 (더미데이터) */}
+      {/* 1) 위: 현장 파트너 광고 */}
       <section style={{ marginTop: 12 }}>
-        <BoardBrowser isLoggedIn={isLoggedIn} />
+        <PartnerBanner isLoggedIn={isLoggedIn} />
       </section>
 
-      {/* 위치기반 파트너 배너 */}
+      {/* 2) 아래: 전체/콘크리트/내부마감/설비·전기·배관 게시판 */}
       <section style={{ marginTop: 24 }}>
-        <PartnerBanner isLoggedIn={isLoggedIn} />
+        <BoardBrowser isLoggedIn={isLoggedIn} />
       </section>
     </div>
   );
