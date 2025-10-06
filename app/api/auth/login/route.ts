@@ -1,20 +1,22 @@
+// app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const apiBase = process.env.API_BASE || "http://localhost:4000";
   const body = await req.json().catch(() => ({}));
+
   const res = await fetch(`${apiBase}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
 
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     return NextResponse.json(data, { status: res.status });
   }
 
-  // 쿠키 세팅 (httpOnly 토큰 + UI용 role)
+  // httpOnly 토큰 + UI용 role 쿠키
   const resp = NextResponse.json({ ok: true });
   resp.cookies.set("auth_token", data.token, {
     httpOnly: true,

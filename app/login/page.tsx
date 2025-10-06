@@ -1,7 +1,7 @@
 // app/login/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function LoginPage({
   searchParams,
@@ -9,8 +9,9 @@ export default function LoginPage({
   searchParams: Promise<{ returnTo?: string }>;
 }) {
   const [sp, setSp] = useState<{ returnTo?: string }>({});
-  // Next 15에서 Promise 풀기
-  searchParams.then(setSp);
+  useEffect(() => {
+    searchParams.then(setSp);
+  }, [searchParams]);
 
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -27,14 +28,14 @@ export default function LoginPage({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ phone, password }),
       });
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
         setError(j.error ?? "로그인 실패");
         return;
       }
-      window.location.href =
-        sp.returnTo && sp.returnTo.startsWith("/") ? sp.returnTo : "/";
-    } catch (e) {
+      const to = sp.returnTo && sp.returnTo.startsWith("/") ? sp.returnTo : "/";
+      window.location.href = to;
+    } catch {
       setError("네트워크 오류");
     } finally {
       setLoading(false);
@@ -42,7 +43,7 @@ export default function LoginPage({
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto" }}>
+    <main style={{ maxWidth: 420, margin: "40px auto", padding: 16 }}>
       <h1 style={{ fontSize: 22, fontWeight: 800 }}>로그인</h1>
       <form
         onSubmit={onSubmit}
@@ -67,7 +68,7 @@ export default function LoginPage({
             className="input"
           />
         </label>
-        <button className="btn" disabled={loading}>
+        <button className="btn btn-primary" disabled={loading}>
           {loading ? "확인 중…" : "로그인"}
         </button>
         {error && (
@@ -76,12 +77,11 @@ export default function LoginPage({
           </div>
         )}
       </form>
-
       <div style={{ marginTop: 16 }}>
         <a className="nav-link" href="/">
           ← 홈으로
         </a>
       </div>
-    </div>
+    </main>
   );
 }
