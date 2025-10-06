@@ -1,61 +1,80 @@
 // app/login/page.tsx
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
 
-export default async function LoginPage({
-  // Next 15: searchParams는 Promise로 받고 await 해야 함
+import { useState } from "react";
+
+export default function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ returnTo?: string }>;
 }) {
-  const sp = await searchParams;
+  const [sp, setSp] = useState<{ returnTo?: string }>({});
+  // Next 15에서 Promise 풀기
+  searchParams.then(setSp);
 
-  async function demoLogin(formData: FormData) {
-    "use server";
-    const jar = await cookies();
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    const roleRaw = (formData.get("role") as string) || "seeker";
-    const role = roleRaw === "employer" ? "employer" : "seeker";
-
-    // 데모용 쿠키
-    jar.set("demo_login", "1", {
-      path: "/",
-      httpOnly: false,
-      maxAge: 60 * 60 * 24 * 7,
-    });
-    jar.set("demo_role", role, {
-      path: "/",
-      httpOnly: false,
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    const next = (formData.get("returnTo") as string | null) ?? "/";
-    redirect(next && next.startsWith("/") ? next : "/");
-  }
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone, password }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error ?? "로그인 실패");
+        return;
+      }
+      window.location.href =
+        sp.returnTo && sp.returnTo.startsWith("/") ? sp.returnTo : "/";
+    } catch (e) {
+      setError("네트워크 오류");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ maxWidth: 420, margin: "40px auto" }}>
       <h1 style={{ fontSize: 22, fontWeight: 800 }}>로그인</h1>
-      <p style={{ color: "#666" }}>
-        데모 전용: 실제 인증 대신 아래 버튼으로 역할을 선택해 로그인합니다.
-      </p>
-
-      {/* 구직자 데모 로그인 */}
-      <form action={demoLogin} style={{ marginTop: 12 }}>
-        <input type="hidden" name="role" value="seeker" />
-        <input type="hidden" name="returnTo" value={sp.returnTo ?? ""} />
-        <button type="submit" className="btn" style={{ width: "100%" }}>
-          구직자 데모 로그인
+      <form
+        onSubmit={onSubmit}
+        style={{ display: "grid", gap: 10, marginTop: 12 }}
+      >
+        <label>
+          전화번호
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="010-0000-0001"
+            className="input"
+          />
+        </label>
+        <label>
+          비밀번호
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="1111"
+            className="input"
+          />
+        </label>
+        <button className="btn" disabled={loading}>
+          {loading ? "확인 중…" : "로그인"}
         </button>
-      </form>
-
-      {/* 구인자 데모 로그인 */}
-      <form action={demoLogin} style={{ marginTop: 8 }}>
-        <input type="hidden" name="role" value="employer" />
-        <input type="hidden" name="returnTo" value={sp.returnTo ?? ""} />
-        <button type="submit" className="btn" style={{ width: "100%" }}>
-          구인자 데모 로그인
-        </button>
+        {error && (
+          <div className="notice" style={{ color: "#b91c1c" }}>
+            {error}
+          </div>
+        )}
       </form>
 
       <div style={{ marginTop: 16 }}>

@@ -4,15 +4,26 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export default async function Header() {
+  // Next 15: cookies()는 Promise
   const jar = await cookies();
-  const isLoggedIn = jar.get("demo_login")?.value === "1";
-  const role = jar.get("demo_role")?.value ?? null;
+  // 새 로그인 흐름: JWT/역할 쿠키
+  const token = jar.get("auth_token")?.value ?? null;
+  const role = jar.get("auth_role")?.value ?? null;
+  const isLoggedIn = !!token;
 
+  // (구) 데모 쿠키도 함께 읽고 싶다면 참고:
+  // const demoLoggedIn = jar.get("demo_login")?.value === "1";
+
+  // 서버 액션: 쿠키 직접 삭제 후 리다이렉트
   async function logout() {
     "use server";
     const cj = await cookies();
+    // 새 쿠키 삭제
+    cj.delete("auth_token"); // path 기본값이 '/'가 아니었다면 로그인 세팅과 동일한 path로 지정 필요
+    cj.delete("auth_role");
+    // (선택) 데모 쿠키도 함께 정리
     cj.delete("demo_login");
-    cj.delete("demo_role"); // 역할도 같이 삭제
+    cj.delete("demo_role");
     redirect("/");
   }
 
@@ -33,11 +44,6 @@ export default async function Header() {
                 공고 올리기
               </Link>
             )}
-            {/* (선택) 역할 뱃지 보여주고 싶으면 주석 해제
-            <span className="role-badge">
-              {role === 'employer' ? '구인자' : '구직자'}
-            </span>
-            */}
             <form action={logout}>
               <button type="submit" className="btn btn-ghost">
                 로그아웃
