@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 export default async function Header() {
-  const jar = await cookies(); // ✅ Next 15: await
+  const jar = await cookies();
   const token = jar.get("auth_token")?.value;
   const demo = jar.get("demo_login")?.value === "1";
   const role = jar.get("auth_role")?.value ?? null;
@@ -25,8 +25,10 @@ export default async function Header() {
                 공고 올리기
               </Link>
             )}
+            {/* ← 폼 제출 시 /api/auth/logout으로 POST 되고,
+                위에서 303 리다이렉트로 / 로 돌아갑니다. */}
             <form action="/api/auth/logout" method="post">
-              <button className="btn btn-ghost" type="submit">
+              <button type="submit" className="btn btn-ghost">
                 로그아웃
               </button>
             </form>
