@@ -113,7 +113,10 @@ export default function PartnerBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
                   <div className="card__body">
                     <div className="card__title">{p.name}</div>
                     <div className="card__meta">
-                      {p.address ?? "부천"} · 약 {p.distanceKm.toFixed(1)} km
+                      {p.address ?? "부천"}
+                      {typeof p.distanceKm === "number"
+                        ? ` · 약 ${p.distanceKm.toFixed(1)} km`
+                        : ""}
                     </div>
                     {p.tags?.length ? (
                       <div className="tags">

@@ -38,38 +38,36 @@ function estimatePay(p: Posting) {
 function completeness(p: Posting) {
   // 아주 단순한 데모 점수 (100점 만점)
   let score = 0;
-  // 임금형태+금액 기입
-  if (p.wage_type && p.wage_amount > 0) score += 20;
-  // 시작일
-  if (p.start_date) score += 10;
-  // 위치(동/주소 중 하나)
-  if (p.dong || p.address) score += 15;
-  // 조건 배지 입력(있으면 가산, 최대 15)
+  if (p.wage_type && p.wage_amount > 0) score += 20; // 임금
+  if (p.start_date) score += 10; // 시작일
+  if (p.dong || p.address) score += 15; // 위치
   const flags = p.flags || {};
   const flagCount = ["today", "night", "beginner_ok", "lodging"].filter(
     (k) => (flags as any)[k]
   ).length;
-  score += Math.min(15, flagCount * 5);
-  // 내용
-  if (p.content && p.content.trim().length >= 10) score += 20;
-  // 카테고리
-  if (p.category) score += 10;
-  // created_at
-  if (p.created_at) score += 10;
+  score += Math.min(15, flagCount * 5); // 조건 배지
+  if (p.content && p.content.trim().length >= 10) score += 20; // 내용
+  if (p.category) score += 10; // 카테고리
+  if (p.created_at) score += 10; // 등록일
   return Math.max(0, Math.min(100, score));
 }
 
 export default async function PostDetailPage({
   params,
 }: {
-  params: { id: string };
+  // ✅ Next 15: params는 Promise
+  params: Promise<{ id: string }>;
 }) {
-  const jar = await cookies();
+  const { id } = await params; // ✅ 먼저 await 해서 id 추출
+  const jar = await cookies(); // ✅ cookies()도 Promise
   const isLoggedIn = jar.get("demo_login")?.value === "1";
-  const post = POSTINGS.find((p) => p.id === params.id);
+
+  const post = POSTINGS.find((p) => p.id === id);
   if (!post) notFound();
-  if (!isLoggedIn)
+
+  if (!isLoggedIn) {
     redirect(`/login?returnTo=${encodeURIComponent(`/post/${post.id}`)}`);
+  }
 
   const pay = estimatePay(post);
   const score = completeness(post);

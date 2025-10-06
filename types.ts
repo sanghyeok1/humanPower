@@ -42,6 +42,7 @@ export type Partner = {
   linkUrl: string;
   address?: string;
   tags?: string[];
+  distanceKm?: number;
 };
 
 export type PartnerWithDistance = Partner & { distanceKm: number };
