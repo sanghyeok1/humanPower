@@ -8,9 +8,18 @@ declare global {
   }
 }
 
+/** 카카오 우편번호 SDK */
 const DAUM_POSTCODE_SDK =
   "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
 
+/** 환경 토글: 나중에 본인인증 켜고 싶으면 .env.local에
+ *  NEXT_PUBLIC_REQUIRE_PHONE_VERIFICATION=1 추가 후 재시작
+ */
+const REQUIRE_PHONE_VERIFICATION =
+  typeof process !== "undefined" &&
+  process.env.NEXT_PUBLIC_REQUIRE_PHONE_VERIFICATION === "1";
+
+/** 공용 로더 */
 function loadScriptOnce(src: string) {
   return new Promise<void>((resolve, reject) => {
     const exist = Array.from(document.scripts).some((s) => s.src === src);
@@ -23,7 +32,6 @@ function loadScriptOnce(src: string) {
     document.head.appendChild(el);
   });
 }
-
 async function waitUntil(test: () => boolean, timeoutMs = 8000, step = 50) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -33,47 +41,76 @@ async function waitUntil(test: () => boolean, timeoutMs = 8000, step = 50) {
   throw new Error("timeout");
 }
 
-/** 비밀번호: 소문자+숫자+특수문자 포함 8자 이상 */
+/** 비번 규칙: 소문자+숫자+특수문자 8자↑ */
 const PASSWORD_POLICY = {
   re: /^(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]).{8,}$/,
   hint: "소문자·숫자·특수문자 포함 8자 이상",
 };
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
-type SendStatus = "idle" | "sending" | "sent";
-type VerifyStatus = "idle" | "verifying" | "ok" | "fail";
 
 export default function SeekerSignupPage() {
-  // 기본 정보 (이름만)
+  // ====== 필드 상태 ======
   const [name, setName] = useState("");
-  const [username, setUsername] = useState(""); // 아이디
-  const [phone, setPhone] = useState("");
-
-  // 비밀번호
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState(""); // 직접 입력(본인인증 나중에)
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
 
-  // 주소/좌표
   const [postalCode, setPostalCode] = useState("");
   const [roadAddress, setRoadAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
 
-  // 동의
   const [agreeService, setAgreeService] = useState(false);
   const [agreePolicy, setAgreePolicy] = useState(false);
 
-  // 상태
+  // ====== UI/검증 상태 ======
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // 아이디 중복 체크
   const [uStatus, setUStatus] = useState<UsernameStatus>("idle");
-  useEffect(() => {
-    setUStatus("idle"); // 입력 바뀌면 초기화
-  }, [username]);
+  useEffect(() => setUStatus("idle"), [username]);
 
+  // “어디를 채워야 하는지” 포커스 주기 위한 ref
+  const refs = {
+    name: useRef<HTMLInputElement>(null),
+    username: useRef<HTMLInputElement>(null),
+    phone: useRef<HTMLInputElement>(null),
+    password: useRef<HTMLInputElement>(null),
+    passwordConfirm: useRef<HTMLInputElement>(null),
+    addrBtn: useRef<HTMLButtonElement>(null),
+  };
+
+  // ====== 유효성 ======
+  const phoneValid = useMemo(() => {
+    const d = phone.replace(/\D/g, "");
+    return d.length >= 10 && d.length <= 11;
+  }, [phone]);
+  const passwordValid = useMemo(
+    () => PASSWORD_POLICY.re.test(password),
+    [password]
+  );
+  const passwordMatch = password && password === passwordConfirm;
+  const addressValid = useMemo(
+    () =>
+      !!roadAddress &&
+      Number.isFinite(Number(lat)) &&
+      Number.isFinite(Number(lng)),
+    [roadAddress, lat, lng]
+  );
+
+  // 본인인증(임시): 사업자/연동 전까지는 “통과로 간주”
+  const [certOK, setCertOK] = useState(!REQUIRE_PHONE_VERIFICATION);
+  // 데모 버튼
+  const demoCertPass = () => {
+    setCertOK(true);
+    if (!phone) setPhone("010-0000-0000"); // 임시 채움
+    setMsg("임시(데모) 본인인증 통과 처리했습니다.");
+  };
+
+  // ====== 아이디 중복확인(서버/DB) ======
   async function checkUsername() {
     setMsg(null);
     setUStatus("checking");
@@ -93,139 +130,7 @@ export default function SeekerSignupPage() {
     }
   }
 
-  // 전화번호 인증
-  const [sendStatus, setSendStatus] = useState<SendStatus>("idle");
-  const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>("idle");
-  const [code, setCode] = useState("");
-  const [count, setCount] = useState(0); // 재전송 카운트다운
-  const timerRef = useRef<any>(null);
-
-  function startCountdown(sec: number) {
-    setCount(sec);
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setCount((s) => {
-        if (s <= 1) {
-          clearInterval(timerRef.current);
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-  }
-
-  async function sendCode() {
-    setMsg(null);
-    setVerifyStatus("idle");
-    setSendStatus("sending");
-    try {
-      const res = await fetch("/api/auth/phone/send", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j?.error || "전송 실패");
-      setSendStatus("sent");
-      startCountdown(60);
-      setMsg("인증번호가 전송되었습니다. (데모: 서버 콘솔에 코드 출력)");
-    } catch (e: any) {
-      setMsg(e?.message ?? "인증번호 전송 중 오류");
-      setSendStatus("idle");
-    }
-  }
-
-  async function verifyCode() {
-    setMsg(null);
-    setVerifyStatus("verifying");
-    try {
-      const res = await fetch("/api/auth/phone/verify", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone, code }),
-      });
-      const j = await res.json();
-      if (!res.ok || !j.verified) {
-        setVerifyStatus("fail");
-        setMsg(j?.error || "인증번호가 올바르지 않습니다.");
-        return;
-      }
-      setVerifyStatus("ok");
-      setMsg("전화번호가 인증되었습니다.");
-    } catch (e: any) {
-      setVerifyStatus("fail");
-      setMsg(e?.message ?? "인증 확인 중 오류");
-    }
-  }
-
-  // 유효성
-  const phoneValid = useMemo(() => {
-    const d = phone.replace(/\D/g, "");
-    return d.length >= 10 && d.length <= 11;
-  }, [phone]);
-  const passwordValid = useMemo(
-    () => PASSWORD_POLICY.re.test(password),
-    [password]
-  );
-  const passwordMatch = password && password === passwordConfirm;
-  const addressValid = useMemo(
-    () => !!roadAddress && Number.isFinite(lat) && Number.isFinite(lng),
-    [roadAddress, lat, lng]
-  );
-
-  const requiredOk = useMemo(
-    () =>
-      !!name.trim() &&
-      /^[a-z0-9_]{3,20}$/.test(username) &&
-      uStatus === "available" &&
-      phoneValid &&
-      verifyStatus === "ok" &&
-      passwordValid &&
-      passwordMatch &&
-      addressValid &&
-      agreeService &&
-      agreePolicy,
-    [
-      name,
-      username,
-      uStatus,
-      phoneValid,
-      verifyStatus,
-      passwordValid,
-      passwordMatch,
-      addressValid,
-      agreeService,
-      agreePolicy,
-    ]
-  );
-
-  const completeness = useMemo(() => {
-    let s = 0;
-    if (name.trim()) s += 10;
-    if (/^[a-z0-9_]{3,20}$/.test(username)) s += 10;
-    if (uStatus === "available") s += 10;
-    if (phoneValid) s += 10;
-    if (verifyStatus === "ok") s += 10;
-    if (passwordValid) s += 15;
-    if (passwordMatch) s += 10;
-    if (addressValid) s += 15;
-    if (agreeService) s += 5;
-    if (agreePolicy) s += 5;
-    return Math.min(100, s);
-  }, [
-    name,
-    username,
-    uStatus,
-    phoneValid,
-    verifyStatus,
-    passwordValid,
-    passwordMatch,
-    addressValid,
-    agreeService,
-    agreePolicy,
-  ]);
-
-  // 우편번호 팝업 + 좌표 변환
+  // ====== 우편번호 + 좌표 ======
   async function openPostcode() {
     setMsg(null);
     try {
@@ -259,34 +164,81 @@ export default function SeekerSignupPage() {
     }
   }
 
-  // 제출(이제 서버에 저장)
+  // ====== 폼 완성도(진행바) ======
+  const completeness = useMemo(() => {
+    let s = 0;
+    if (name.trim()) s += 12;
+    if (/^[a-z0-9_]{3,20}$/.test(username)) s += 12;
+    if (uStatus === "available") s += 12;
+    if (phoneValid) s += 12;
+    if (certOK) s += 12;
+    if (passwordValid) s += 15;
+    if (passwordMatch) s += 10;
+    if (addressValid) s += 12;
+    if (agreeService) s += 2;
+    if (agreePolicy) s += 1;
+    return Math.min(100, s);
+  }, [
+    name,
+    username,
+    uStatus,
+    phoneValid,
+    certOK,
+    passwordValid,
+    passwordMatch,
+    addressValid,
+    agreeService,
+    agreePolicy,
+  ]);
+
+  // ====== 제출 ======
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
 
-    // 필수 체크(당신의 페이지 기준에 맞춰 수정 가능)
-    const passwordValid =
-      /^(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]).{8,}$/.test(
-        password
-      );
-    const passwordMatch = password && password === passwordConfirm;
-    const addressValid =
-      !!roadAddress &&
-      Number.isFinite(Number(lat)) &&
-      Number.isFinite(Number(lng));
+    // 1) 어떤 필드가 막는지 “명확하게” 알려주고 포커스 이동
+    const fail = (message: string, focus?: keyof typeof refs) => {
+      setMsg(message);
+      if (focus && refs[focus]?.current) refs[focus].current!.focus();
+    };
 
-    if (!name.trim()) return setMsg("이름을 입력해 주세요.");
+    if (!name.trim()) return fail("이름을 입력해 주세요.", "name");
+
     if (!/^[a-z0-9_]{3,20}$/.test(username))
-      return setMsg("아이디 형식이 올바르지 않습니다.");
+      return fail(
+        "아이디 형식이 올바르지 않습니다. (영문소문자/숫자/언더스코어 3~20자)",
+        "username"
+      );
     if (uStatus !== "available")
-      return setMsg("아이디 중복확인을 완료해 주세요.");
-    if (!passwordValid) return setMsg("비밀번호 규칙을 확인해 주세요.");
-    if (!passwordMatch) return setMsg("비밀번호가 일치하지 않습니다.");
-    if (!addressValid)
-      return setMsg("주소를 선택해 위/경도가 입력되도록 해주세요.");
-    if (!agreeService || !agreePolicy)
-      return setMsg("필수 동의에 체크해 주세요.");
+      return fail("아이디 중복확인을 완료해 주세요.", "username");
 
+    if (!phoneValid)
+      return fail("전화번호를 정확히 입력해 주세요. (숫자 10~11자리)", "phone");
+
+    if (REQUIRE_PHONE_VERIFICATION && !certOK)
+      return fail(
+        "휴대폰 본인인증이 필요합니다. (상단 버튼으로 인증)",
+        "phone"
+      );
+
+    if (!PASSWORD_POLICY.re.test(password))
+      return fail(
+        `비밀번호 규칙을 확인해 주세요. (${PASSWORD_POLICY.hint})`,
+        "password"
+      );
+    if (!password || password !== passwordConfirm)
+      return fail("비밀번호가 서로 일치하지 않습니다.", "passwordConfirm");
+
+    if (!addressValid)
+      return fail(
+        "카카오 주소 찾기로 주소를 선택해 위/경도가 입력되도록 해주세요.",
+        "addrBtn"
+      );
+
+    if (!agreeService || !agreePolicy)
+      return fail("필수 약관에 모두 동의해 주세요.");
+
+    // 2) 서버 저장
     setSaving(true);
     try {
       const res = await fetch("/api/signup/seeker", {
@@ -295,7 +247,7 @@ export default function SeekerSignupPage() {
         body: JSON.stringify({
           name,
           username,
-          phone, // 본인인증 붙이기 전이므로 입력값 그대로 보냄(추후 normalize는 서버에서 진행)
+          phone,
           password,
           postalCode,
           roadAddress,
@@ -307,19 +259,16 @@ export default function SeekerSignupPage() {
       const j = await res.json();
       if (!res.ok || !j.ok) {
         if (j?.error === "username_taken")
-          return setMsg("이미 사용중인 아이디입니다.");
+          return fail("이미 사용 중인 아이디입니다.", "username");
         if (j?.error === "phone_taken")
-          return setMsg("이미 등록된 전화번호입니다.");
-        return setMsg(j?.error || "가입에 실패했습니다.");
+          return fail("이미 등록된 전화번호입니다.", "phone");
+        return fail(j?.error || "가입에 실패했습니다.");
       }
 
       setMsg("가입이 완료되었습니다! 로그인 페이지로 이동합니다.");
-      // 필요 시 자동 이동
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 800);
+      setTimeout(() => (window.location.href = "/login"), 800);
     } catch {
-      setMsg("네트워크 오류로 가입에 실패했습니다.");
+      fail("네트워크 오류로 가입에 실패했습니다.");
     } finally {
       setSaving(false);
     }
@@ -379,6 +328,7 @@ export default function SeekerSignupPage() {
         <label>
           이름
           <input
+            ref={refs.name}
             className="input"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -393,6 +343,7 @@ export default function SeekerSignupPage() {
             아이디
             <div style={{ display: "flex", gap: 8 }}>
               <input
+                ref={refs.username}
                 className="input"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -429,65 +380,33 @@ export default function SeekerSignupPage() {
           )}
         </div>
 
-        {/* 전화번호 + 인증 */}
+        {/* 전화번호 (본인인증 나중에) */}
         <div style={{ display: "grid", gap: 6 }}>
           <label>
             전화번호
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input
+                ref={refs.phone}
                 className="input"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="010-0000-0000"
               />
-              <button
-                type="button"
-                className="btn"
-                onClick={sendCode}
-                disabled={!phoneValid || sendStatus === "sending" || count > 0}
-                title={!phoneValid ? "전화번호를 정확히 입력하세요" : ""}
-              >
-                {sendStatus === "sending"
-                  ? "전송 중…"
-                  : count > 0
-                  ? `재전송(${count}s)`
-                  : "인증번호 전송"}
-              </button>
+              {!REQUIRE_PHONE_VERIFICATION && (
+                <button type="button" className="btn" onClick={demoCertPass}>
+                  본인인증(데모) 통과
+                </button>
+              )}
             </div>
           </label>
           {!phoneValid && phone && (
             <div style={{ color: "#b91c1c", fontSize: 12 }}>
-              10~11자리 숫자로 입력하세요.
+              숫자 10~11자리로 입력해 주세요.
             </div>
           )}
-
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              className="input"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="인증번호 6자리"
-              maxLength={6}
-              inputMode="numeric"
-              style={{ flex: 1 }}
-            />
-            <button
-              type="button"
-              className="btn"
-              onClick={verifyCode}
-              disabled={code.length < 4 || verifyStatus === "verifying"}
-            >
-              {verifyStatus === "verifying" ? "확인 중…" : "인증확인"}
-            </button>
-          </div>
-          {verifyStatus === "ok" && (
+          {certOK && !REQUIRE_PHONE_VERIFICATION && (
             <div style={{ color: "#166534", fontSize: 12 }}>
-              전화번호 인증 완료
-            </div>
-          )}
-          {verifyStatus === "fail" && (
-            <div style={{ color: "#b91c1c", fontSize: 12 }}>
-              인증 실패. 번호/코드를 확인하세요.
+              임시(데모) 인증 완료 상태입니다.
             </div>
           )}
         </div>
@@ -497,6 +416,7 @@ export default function SeekerSignupPage() {
           <label>
             비밀번호
             <input
+              ref={refs.password}
               type="password"
               className="input"
               value={password}
@@ -508,6 +428,7 @@ export default function SeekerSignupPage() {
           <label>
             비밀번호 확인
             <input
+              ref={refs.passwordConfirm}
               type="password"
               className="input"
               value={passwordConfirm}
@@ -538,7 +459,12 @@ export default function SeekerSignupPage() {
               readOnly
               style={{ width: 140 }}
             />
-            <button type="button" className="btn" onClick={openPostcode}>
+            <button
+              ref={refs.addrBtn}
+              type="button"
+              className="btn"
+              onClick={openPostcode}
+            >
               카카오 주소 찾기
             </button>
           </div>
@@ -570,8 +496,7 @@ export default function SeekerSignupPage() {
           </div>
           {!addressValid && (roadAddress || detailAddress) && (
             <div style={{ color: "#b91c1c", fontSize: 12 }}>
-              주소 선택 후 좌표가 자동 입력되어야 합니다. (다시 “카카오 주소
-              찾기”)
+              주소 선택 후 위/경도가 자동 입력되어야 합니다.
             </div>
           )}
         </div>
@@ -612,12 +537,8 @@ export default function SeekerSignupPage() {
         )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <button
-            className="btn btn-primary"
-            type="submit"
-            disabled={saving || !requiredOk}
-          >
-            {saving ? "제출 중…" : "가입하기 (프론트 데모)"}
+          <button className="btn btn-primary" type="submit" disabled={saving}>
+            {saving ? "제출 중…" : "가입하기"}
           </button>
           <a href="/" className="btn">
             취소
