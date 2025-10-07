@@ -1,3 +1,4 @@
+import type { RowDataPacket, OkPacket } from "mysql2/promise";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -37,6 +38,137 @@ app.get("/health", async (_req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+/* ======== 계정 유효성 규칙 ======== */
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+const PASSWORD_RE =
+  /^(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]).{8,}$/;
+
+function normalizePhone(p: string) {
+  return String(p || "").replace(/\D/g, "");
+}
+
+/** 아이디 중복 확인 (DB 기준)
+ *  POST /auth/check-username  { username }
+ *  -> { ok: true, available: boolean, reason?: 'invalid_format' }
+ */
+app.post("/auth/check-username", async (req, res) => {
+  try {
+    const { username } = req.body ?? {};
+    if (!username) {
+      return res.status(400).json({ ok: false, error: "missing_username" });
+    }
+    if (!USERNAME_RE.test(username)) {
+      return res.json({ ok: true, available: false, reason: "invalid_format" });
+    }
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      "SELECT id FROM accounts WHERE username = ? LIMIT 1",
+      [username]
+    );
+    const taken = rows.length > 0;
+    return res.json({ ok: true, available: !taken });
+  } catch (e: any) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: "server_error" });
+  }
+});
+
+/** 구직자 회원가입
+ *  POST /auth/signup/seeker
+ *  body:
+ *  {
+ *    "name": "홍길동",
+ *    "username": "gildong",
+ *    "phone": "010-1234-5678",
+ *    "password": "Passw0rd!",
+ *    "postalCode": "12345",
+ *    "roadAddress": "경기 부천시 ... 계남로 329",
+ *    "detailAddress": "806호",
+ *    "lat": 37.503,
+ *    "lng": 126.766
+ *  }
+ *  -> { ok: true, id: number }
+ */
+app.post("/auth/signup/seeker", async (req, res) => {
+  try {
+    const {
+      name, // 화면에서 입력한 "이름"
+      username, // 아이디
+      phone, // 전화번호(숫자만 저장)
+      password, // 비밀번호 원문 -> 해시 저장
+      postalCode,
+      roadAddress,
+      detailAddress,
+      lat,
+      lng,
+    } = req.body ?? {};
+
+    // --- 입력 검증 ---
+    if (!name || typeof name !== "string" || name.trim() === "") {
+      return res.status(400).json({ ok: false, error: "invalid_name" });
+    }
+    if (!USERNAME_RE.test(username ?? "")) {
+      return res.status(400).json({ ok: false, error: "invalid_username" });
+    }
+    const p = normalizePhone(phone);
+    if (p.length < 10 || p.length > 11) {
+      return res.status(400).json({ ok: false, error: "invalid_phone" });
+    }
+    if (!PASSWORD_RE.test(password ?? "")) {
+      return res.status(400).json({ ok: false, error: "weak_password" });
+    }
+    // 좌표 필수(원하면 완화 가능)
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) {
+      return res.status(400).json({ ok: false, error: "invalid_coords" });
+    }
+
+    // --- 중복 체크 ---
+    const [dups] = await pool.query<RowDataPacket[]>(
+      "SELECT id, username, phone FROM accounts WHERE username=? OR phone=? LIMIT 1",
+      [username, p]
+    );
+    if (dups.length > 0) {
+      const d = dups[0];
+      if (String(d.username) === String(username)) {
+        return res.status(409).json({ ok: false, error: "username_taken" });
+      }
+      if (String(d.phone) === String(p)) {
+        return res.status(409).json({ ok: false, error: "phone_taken" });
+      }
+      return res.status(409).json({ ok: false, error: "duplicated" });
+    }
+
+    // --- 비밀번호 해시 ---
+    const hash = await bcrypt.hash(String(password), 12);
+
+    // --- 저장 ---
+    const [result] = await pool.query<OkPacket>(
+      `INSERT INTO accounts
+       (role, username, phone, password_hash, business_no, display_name, status,
+        postal_code, road_address, detail_address, lat, lng, created_at, updated_at)
+       VALUES
+       ('seeker', ?, ?, ?, NULL, ?, 'active',
+        ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        username,
+        p,
+        hash,
+        name, // display_name에 이름 저장
+        postalCode || null,
+        roadAddress || null,
+        detailAddress || null,
+        Number(lat),
+        Number(lng),
+      ]
+    );
+
+    return res.json({ ok: true, id: result.insertId });
+  } catch (e: any) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: "server_error" });
   }
 });
 

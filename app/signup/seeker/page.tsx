@@ -259,30 +259,67 @@ export default function SeekerSignupPage() {
     }
   }
 
-  // 제출(지금은 콘솔 출력만)
+  // 제출(이제 서버에 저장)
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
-    if (!requiredOk) {
-      setMsg("필수 항목을 확인해 주세요.");
-      return;
-    }
+
+    // 필수 체크(당신의 페이지 기준에 맞춰 수정 가능)
+    const passwordValid =
+      /^(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]).{8,}$/.test(
+        password
+      );
+    const passwordMatch = password && password === passwordConfirm;
+    const addressValid =
+      !!roadAddress &&
+      Number.isFinite(Number(lat)) &&
+      Number.isFinite(Number(lng));
+
+    if (!name.trim()) return setMsg("이름을 입력해 주세요.");
+    if (!/^[a-z0-9_]{3,20}$/.test(username))
+      return setMsg("아이디 형식이 올바르지 않습니다.");
+    if (uStatus !== "available")
+      return setMsg("아이디 중복확인을 완료해 주세요.");
+    if (!passwordValid) return setMsg("비밀번호 규칙을 확인해 주세요.");
+    if (!passwordMatch) return setMsg("비밀번호가 일치하지 않습니다.");
+    if (!addressValid)
+      return setMsg("주소를 선택해 위/경도가 입력되도록 해주세요.");
+    if (!agreeService || !agreePolicy)
+      return setMsg("필수 동의에 체크해 주세요.");
+
     setSaving(true);
     try {
-      console.log("[SeekerSignup payload]", {
-        name,
-        username,
-        phone: phone.replace(/\D/g, ""),
-        password,
-        postalCode,
-        roadAddress,
-        detailAddress,
-        lat,
-        lng,
+      const res = await fetch("/api/signup/seeker", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name,
+          username,
+          phone, // 본인인증 붙이기 전이므로 입력값 그대로 보냄(추후 normalize는 서버에서 진행)
+          password,
+          postalCode,
+          roadAddress,
+          detailAddress,
+          lat,
+          lng,
+        }),
       });
-      setMsg("임시 제출 완료(프론트). 콘솔 확인!");
+      const j = await res.json();
+      if (!res.ok || !j.ok) {
+        if (j?.error === "username_taken")
+          return setMsg("이미 사용중인 아이디입니다.");
+        if (j?.error === "phone_taken")
+          return setMsg("이미 등록된 전화번호입니다.");
+        return setMsg(j?.error || "가입에 실패했습니다.");
+      }
+
+      setMsg("가입이 완료되었습니다! 로그인 페이지로 이동합니다.");
+      // 필요 시 자동 이동
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 800);
     } catch {
-      setMsg("제출 중 오류가 발생했습니다.");
+      setMsg("네트워크 오류로 가입에 실패했습니다.");
     } finally {
       setSaving(false);
     }

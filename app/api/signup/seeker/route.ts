@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
 
-  const r = await fetch(`${base}/auth/check-username`, {
+  const r = await fetch(`${base}/auth/signup/seeker`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
