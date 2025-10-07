@@ -8,27 +8,46 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "missing_query" }, { status: 400 });
   }
 
-  const REST = process.env.KAKAO_REST_KEY; // ⭐ 서버 전용 키 (NEXT_PUBLIC 아님)
+  const REST = process.env.KAKAO_REST_KEY?.trim(); // 서버 전용 REST 키
   if (!REST) {
-    return NextResponse.json({ error: "missing_rest_key" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "missing KAKAO_REST_KEY" },
+      { status: 500 }
+    );
   }
 
-  const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(
-    query
-  )}`;
+  const url =
+    "https://dapi.kakao.com/v2/local/search/address.json?query=" +
+    encodeURIComponent(query);
 
+  // ▶ 바디는 '한 번만' 읽는다: text → JSON 파싱 시도
   const r = await fetch(url, {
     headers: { Authorization: `KakaoAK ${REST}` },
     cache: "no-store",
   });
 
-  const j = await r.json().catch(() => ({}));
-
-  if (!r.ok) {
-    return NextResponse.json(j, { status: r.status });
+  const raw = await r.text(); // 한번만 읽음
+  let data: any = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch {
+    // JSON이 아니면 data는 null로 두고 raw를 그대로 전달
   }
 
-  const doc = j?.documents?.[0];
+  if (!r.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        from: "kakao",
+        status: r.status,
+        // 카카오가 보낸 에러 본문(JSON이면 data, 아니면 raw문자열)
+        body: data ?? raw,
+      },
+      { status: r.status }
+    );
+  }
+
+  const doc = data?.documents?.[0];
   if (!doc) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
