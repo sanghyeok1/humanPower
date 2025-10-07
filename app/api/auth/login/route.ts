@@ -2,32 +2,32 @@
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  const base = process.env.API_BASE;
-  if (!base)
-    return NextResponse.json(
-      { ok: false, error: "missing API_BASE" },
-      { status: 500 }
-    );
+  const apiBase = process.env.API_BASE || "http://localhost:4000";
+  const body = await req.json().catch(() => ({})); // { username, password } 기대
 
-  const r = await fetch(`${base}/auth/login`, {
+  const res = await fetch(`${apiBase}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j?.ok || !j?.token) {
-    return NextResponse.json(j, { status: r.status });
-  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return NextResponse.json(data, { status: res.status });
 
-  const res = NextResponse.json({ ok: true, user: j.user });
-  // 로그인 쿠키 발급 (Next 도메인 기준)
-  res.cookies.set("hp_token", j.token, {
+  const resp = NextResponse.json({ ok: true });
+  resp.cookies.set("auth_token", data.token, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
-  return res;
+  resp.cookies.set("auth_role", data.account?.role ?? "", {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+  return resp;
 }

@@ -272,81 +272,68 @@ app.get("/partners", async (req, res) => {
    POST /auth/login  { phone, password } */
 
 // server/src/index.ts 중 기존 app.post('/auth/login', ...) 전부 교체
-
-// ===== 교체본: 아이디/비번 로그인 =====
-// POST /auth/login  { username, password }
 app.post("/auth/login", async (req, res) => {
   try {
-    const { username, password } = req.body ?? {};
+    const { username, password } = req.body || {};
     if (!username || !password) {
-      return res.status(400).json({ ok: false, error: "missing_params" });
+      return res.status(400).json({ error: "missing_fields" });
     }
 
-    // 아이디 기준으로 조회
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, role, username, display_name, status, password_hash, phone
-         FROM accounts
-        WHERE username = ?
-        LIMIT 1`,
-      [username]
+    const u = String(username).trim();
+
+    // 전화번호 호환용 정규화(+82 → 0, 숫자만)
+    const normalizePhone = (v: string) => {
+      let digits = String(v).trim().replace(/\D/g, "");
+      if (digits.startsWith("8210")) digits = "0" + digits.slice(3);
+      else if (digits.startsWith("82")) digits = "0" + digits.slice(2);
+      return digits;
+    };
+    const phoneNorm = normalizePhone(u);
+
+    // ✅ 우선 username으로 찾고, 없으면 전화번호(정규화)로도 매칭 (이행기 호환)
+    const [rows]: any = await pool.query(
+      `
+      SELECT id, role, username, phone, display_name, password_hash
+      FROM accounts
+      WHERE username = ?
+         OR REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+82', '0') = ?
+      LIMIT 1
+      `,
+      [u, phoneNorm]
     );
 
-    if (rows.length === 0) {
-      return res.status(401).json({ ok: false, error: "invalid_credentials" });
-    }
+    if (!rows.length)
+      return res.status(401).json({ error: "invalid_credentials" });
 
-    const user = rows[0] as any;
+    const acc = rows[0];
+    const ok =
+      !!acc.password_hash &&
+      (await bcrypt.compare(password, acc.password_hash));
+    if (!ok) return res.status(401).json({ error: "invalid_credentials" });
 
-    // 비활성 계정 차단
-    if (user.status !== "active") {
-      return res.status(403).json({ ok: false, error: "inactive_account" });
-    }
-
-    // 비밀번호 확인
-    const hash: string | null = user.password_hash ?? null;
-
-    // 🔹 개발 편의: 예전 더미값이 있으면 "1111" 허용 (운영 배포 전 제거 권장)
-    let ok = false;
-    if (hash && hash.startsWith("$2")) {
-      ok = await bcrypt.compare(String(password), hash);
-    } else if (hash && String(hash).includes("HASH1111")) {
-      ok = String(password) === "1111";
-    } else {
-      ok = false;
-    }
-
-    if (!ok) {
-      return res.status(401).json({ ok: false, error: "invalid_credentials" });
-    }
-
-    // 토큰 발급
     const token = jwt.sign(
-      { sub: String(user.id), typ: "hp", role: user.role },
+      {
+        sub: String(acc.id),
+        role: acc.role,
+        username: acc.username ?? null,
+        phone: acc.phone ?? null,
+      },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // 응답 (기존 프론트 호환을 위해 account도 함께 내려줌)
-    return res.json({
-      ok: true,
+    res.json({
       token,
-      user: {
-        id: user.id,
-        role: user.role,
-        username: user.username,
-        display_name: user.display_name,
-      },
       account: {
-        id: user.id,
-        role: user.role,
-        username: user.username,
-        phone: user.phone ?? null,
-        display_name: user.display_name,
+        id: acc.id,
+        role: acc.role,
+        username: acc.username ?? null,
+        phone: acc.phone ?? null,
+        display_name: acc.display_name,
       },
     });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, error: "server_error" });
+    res.status(500).json({ error: String(e) });
   }
 });
 
@@ -367,54 +354,6 @@ app.get("/auth/me", async (req, res) => {
     res.json(rows[0]);
   } catch {
     res.status(401).json({ error: "unauthorized" });
-  }
-});
-
-/* ===== 내 계정(프로필) 조회: 좌표 포함 =====
- * GET /accounts/:id
- * - 인증 필요: Bearer 토큰
- * - admin은 아무 id나 조회 가능, 일반 사용자는 자기 계정만 조회 가능
- */
-app.get("/accounts/:id", async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) {
-    return res.status(400).json({ ok: false, error: "bad_id" });
-  }
-
-  try {
-    // --- 토큰 검증 ---
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (!token)
-      return res.status(401).json({ ok: false, error: "unauthorized" });
-
-    const payload: any = jwt.verify(token, JWT_SECRET); // { sub, role, ... }
-
-    // admin이 아니면 자기 자신만 조회 허용
-    if (payload.role !== "admin" && String(payload.sub) !== String(id)) {
-      return res.status(403).json({ ok: false, error: "forbidden" });
-    }
-
-    // --- 조회 ---
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, role, username, display_name, phone,
-              postal_code, road_address, detail_address,
-              lat, lng
-         FROM accounts
-        WHERE id = ?
-        LIMIT 1`,
-      [id]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ ok: false, error: "not_found" });
-    }
-
-    return res.json({ ok: true, account: rows[0] });
-  } catch (e) {
-    console.error(e);
-    // 토큰 만료/서명 실패 등도 여기로 들어올 수 있음
-    return res.status(401).json({ ok: false, error: "unauthorized" });
   }
 });
 
