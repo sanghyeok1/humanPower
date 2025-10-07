@@ -34,25 +34,15 @@ export type Posting = {
 
 // ===== 파트너 배너 =====
 export type Partner = {
-  id: number;
+  id: string;
   name: string;
-  address?: string | null;
-
-  // 기본(snake_case)
-  logo_url?: string | null;
-  link_url?: string | null;
-  tags_json?: string[] | null;
-
-  lat: number | string;
-  lng: number | string;
-
-  dist_m?: number; // 서버가 미터로 주는 경우
-  distanceKm?: number; // 프록시/클라이언트에서 km로 계산한 경우
-} & Partial<{
-  // 호환용(camelCase) — 선택적
-  logoUrl: string | null;
-  linkUrl: string | null;
-  tags: string[];
-}>;
+  lat: number;
+  lng: number;
+  logoUrl: string;
+  linkUrl: string;
+  address?: string;
+  tags?: string[];
+  distanceKm?: number;
+};
 
 export type PartnerWithDistance = Partner & { distanceKm: number };

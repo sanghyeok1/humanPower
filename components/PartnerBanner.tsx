@@ -6,13 +6,21 @@ type Partner = {
   id: number;
   name: string;
   address?: string | null;
+
   logo_url?: string | null;
   link_url?: string | null;
   tags_json?: string[] | null;
-  lat: string;
-  lng: string;
-  dist_m?: number; // 서버에서 오는 원시 거리(m)
-  distanceKm?: number; // 프록시에서 변환해줄 수도 있음
+
+  lat: number | string;
+  lng: number | string;
+
+  dist_m?: number;
+  distanceKm?: number;
+
+  // 호환용(있어도 되고 없어도 됨)
+  logoUrl?: string | null;
+  linkUrl?: string | null;
+  tags?: string[];
 };
 
 const DEFAULT_CENTER = { lat: 37.503, lng: 126.766 }; // 부천시청
@@ -26,75 +34,83 @@ export default function PartnerBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchBy(lat: number, lng: number, label: string) {
+  async function fetchPartners(lat: number, lng: number, label: string) {
     try {
       const res = await fetch(`/api/partners?lat=${lat}&lng=${lng}`, {
         cache: "no-store",
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "partners_failed");
       setPartners(data.items ?? []);
       setCenter(data.center ?? { lat, lng });
       setSubtitle(label);
-    } catch {
+      setError(null);
+    } catch (e: any) {
       setError("파트너 광고를 불러오지 못했어요.");
     }
   }
 
   useEffect(() => {
-    if (!isLoggedIn) return; // 비로그인은 기존 placeholder
-    let stopped = false;
-
+    let abort = false;
     (async () => {
+      if (!isLoggedIn) return;
       setLoading(true);
       setError(null);
 
-      // 1) 내 프로필 좌표 우선
+      // 1) 내 저장 좌표 우선
       try {
         const me = await fetch("/api/me", { cache: "no-store" });
         if (me.ok) {
-          const j = await me.json();
+          const j = await me.json().catch(() => ({}));
           const acc = j?.account;
           const lat = Number(acc?.lat);
           const lng = Number(acc?.lng);
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
-            if (!stopped) await fetchBy(lat, lng, "내 저장된 주소 기준");
+            if (!abort) await fetchPartners(lat, lng, "내 저장된 주소 기준");
+            setLoading(false);
             return;
           }
         }
       } catch {
-        // 무시하고 폴백 진행
+        // 무시하고 폴백
       }
 
-      // 2) 브라우저 위치 폴백
+      // 2) 브라우저 위치
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
-            if (stopped) return;
-            const { latitude, longitude } = pos.coords;
-            await fetchBy(latitude, longitude, "내 현재 위치 기준");
+            if (abort) return;
+            await fetchPartners(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              "내 현재 위치 기준"
+            );
+            setLoading(false);
           },
           async () => {
-            if (stopped) return;
-            await fetchBy(
+            if (abort) return;
+            await fetchPartners(
               DEFAULT_CENTER.lat,
               DEFAULT_CENTER.lng,
               "부천시청 기준(권한 거부)"
             );
+            setLoading(false);
           },
           { enableHighAccuracy: false, maximumAge: 60_000, timeout: 7_000 }
         );
       } else {
-        // 3) 최종 기본값
-        await fetchBy(
+        // 3) 기본
+        await fetchPartners(
           DEFAULT_CENTER.lat,
           DEFAULT_CENTER.lng,
           "부천시청 기준(위치 미지원)"
         );
+        setLoading(false);
       }
     })();
 
     return () => {
-      stopped = true;
+      abort = true;
     };
   }, [isLoggedIn]);
 
@@ -128,17 +144,20 @@ export default function PartnerBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
                     : typeof p.dist_m === "number"
                     ? p.dist_m / 1000
                     : undefined;
+                const link = p.link_url ?? p.linkUrl ?? "#";
+                const logo = p.logo_url ?? p.logoUrl ?? undefined;
+                const tags = p.tags_json ?? p.tags ?? [];
                 return (
                   <a
                     key={p.id}
                     className="card"
-                    href={p.link_url ?? "#"}
+                    href={link}
                     target="_blank"
                     rel="noreferrer"
                   >
                     <div className="card__thumb">
-                      {p.logo_url ? (
-                        <img src={p.logo_url} alt={`${p.name} 로고`} />
+                      {logo ? (
+                        <img src={logo} alt={`${p.name} 로고`} />
                       ) : (
                         <div className="noimg" />
                       )}
@@ -149,9 +168,9 @@ export default function PartnerBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
                         {p.address ?? "부천"}{" "}
                         {km !== undefined ? `· 약 ${km.toFixed(1)} km` : ""}
                       </div>
-                      {Array.isArray(p.tags_json) && p.tags_json.length > 0 && (
+                      {tags.length > 0 && (
                         <div className="tags">
-                          {p.tags_json.slice(0, 3).map((t) => (
+                          {tags.slice(0, 3).map((t) => (
                             <span key={t} className="tag">
                               {t}
                             </span>

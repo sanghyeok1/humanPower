@@ -357,6 +357,31 @@ app.get("/auth/me", async (req, res) => {
   }
 });
 
+// 내 계정(좌표 포함) 조회
+app.get("/accounts/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ ok: false, error: "bad_id" });
+  }
+  try {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT id, role, username, display_name, phone,
+              postal_code, road_address, detail_address,
+              lat, lng, status
+         FROM accounts
+        WHERE id=? LIMIT 1`,
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ ok: false, error: "not_found" });
+    }
+    return res.json({ ok: true, account: rows[0] });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: "server_error" });
+  }
+});
+
 /* ===== Start ===== */
 const port = Number(process.env.PORT ?? 4000);
 app.listen(port, () => console.log(`API listening on ${port}`));
