@@ -1,36 +1,49 @@
 // app/signup/page.tsx
-export default async function SignupPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ role?: string }>;
-}) {
-  const sp = await searchParams;
-  const role =
-    sp.role === "employer" ? "구인자" : sp.role === "seeker" ? "구직자" : null;
+import Link from "next/link";
 
+export default function SignupIndexPage() {
   return (
-    <div style={{ maxWidth: 520, margin: "40px auto" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800 }}>
-        {role ? `${role} 회원가입` : "회원가입"}
-      </h1>
-      <p style={{ color: "#666", marginTop: 6 }}>
-        데모 단계: 실제 가입 폼은 이후 단계에서 구현됩니다.
-      </p>
+    <main style={{ maxWidth: 720, margin: "24px auto", padding: 16 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800 }}>회원가입</h1>
+      <p style={{ color: "#666", marginTop: 6 }}>가입 유형을 선택해 주세요.</p>
 
-      <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
-        <a className="btn" href="/signup?role=seeker">
-          구직자 회원가입
-        </a>
-        <a className="btn" href="/signup?role=employer">
-          구인자 회원가입
-        </a>
-      </div>
+      <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+        <Link
+          href="/signup/seeker"
+          className="row"
+          style={{
+            display: "block",
+            border: "1px solid #eee",
+            borderRadius: 12,
+            padding: 16,
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <b>구직자 회원가입</b>
+          <div style={{ color: "#666", marginTop: 4 }}>
+            부천 동 단위 일감 탐색 · 빠른 지원
+          </div>
+        </Link>
 
-      <div style={{ marginTop: 16 }}>
-        <a className="nav-link" href="/">
-          ← 홈으로
-        </a>
+        <Link
+          href="/signup/employer"
+          className="row"
+          style={{
+            display: "block",
+            border: "1px solid #eee",
+            borderRadius: 12,
+            padding: 16,
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <b>구인자 회원가입</b>
+          <div style={{ color: "#666", marginTop: 4 }}>
+            동단위 공고 등록 · 파트너 네트워크
+          </div>
+        </Link>
       </div>
-    </div>
+    </main>
   );
 }
