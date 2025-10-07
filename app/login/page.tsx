@@ -13,7 +13,7 @@ export default function LoginPage({
     searchParams.then(setSp);
   }, [searchParams]);
 
-  const [phone, setPhone] = useState("");
+  const [username, setUsername] = useState(""); // ✅ 아이디
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,7 @@ export default function LoginPage({
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({ username, password }), // ✅ 아이디로 로그인
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -50,12 +50,13 @@ export default function LoginPage({
         style={{ display: "grid", gap: 10, marginTop: 12 }}
       >
         <label>
-          전화번호
+          아이디
           <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="010-0000-0001"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="예: worker01"
             className="input"
+            autoComplete="username"
           />
         </label>
         <label>
@@ -64,8 +65,9 @@ export default function LoginPage({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="1111"
+            placeholder="••••"
             className="input"
+            autoComplete="current-password"
           />
         </label>
         <button className="btn btn-primary" disabled={loading}>

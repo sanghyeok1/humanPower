@@ -138,34 +138,38 @@ app.get("/partners", async (req, res) => {
 
 /* ===== 로그인 (폰번호 정규화 + JWT 발급) =====
    POST /auth/login  { phone, password } */
+
+// server/src/index.ts 중 기존 app.post('/auth/login', ...) 전부 교체
 app.post("/auth/login", async (req, res) => {
   try {
-    const { phone, password } = req.body || {};
-    if (!phone || !password) {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
       return res.status(400).json({ error: "missing_fields" });
     }
 
-    // 입력값 정규화: 숫자만 남기고, +82 → 0
+    const u = String(username).trim();
+
+    // 전화번호 호환용 정규화(+82 → 0, 숫자만)
     const normalizePhone = (v: string) => {
-      const t = String(v).trim();
-      let digits = t.replace(/\D/g, ""); // 숫자만
-      if (digits.startsWith("8210"))
-        digits = "0" + digits.slice(3); // 8210xxxx → 0 + 10xxxx
+      let digits = String(v).trim().replace(/\D/g, "");
+      if (digits.startsWith("8210")) digits = "0" + digits.slice(3);
       else if (digits.startsWith("82")) digits = "0" + digits.slice(2);
       return digits;
     };
-    const phoneNorm = normalizePhone(phone);
+    const phoneNorm = normalizePhone(u);
 
-    // DB 쿼리도 동일한 규칙으로 비교
+    // ✅ 우선 username으로 찾고, 없으면 전화번호(정규화)로도 매칭 (이행기 호환)
     const [rows]: any = await pool.query(
       `
-      SELECT id, role, phone, display_name, password_hash
+      SELECT id, role, username, phone, display_name, password_hash
       FROM accounts
-      WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+82', '0') = ?
+      WHERE username = ?
+         OR REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+82', '0') = ?
       LIMIT 1
       `,
-      [phoneNorm]
+      [u, phoneNorm]
     );
+
     if (!rows.length)
       return res.status(401).json({ error: "invalid_credentials" });
 
@@ -176,7 +180,12 @@ app.post("/auth/login", async (req, res) => {
     if (!ok) return res.status(401).json({ error: "invalid_credentials" });
 
     const token = jwt.sign(
-      { sub: String(acc.id), role: acc.role, phone: acc.phone },
+      {
+        sub: String(acc.id),
+        role: acc.role,
+        username: acc.username ?? null,
+        phone: acc.phone ?? null,
+      },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -186,7 +195,8 @@ app.post("/auth/login", async (req, res) => {
       account: {
         id: acc.id,
         role: acc.role,
-        phone: acc.phone,
+        username: acc.username ?? null,
+        phone: acc.phone ?? null,
         display_name: acc.display_name,
       },
     });

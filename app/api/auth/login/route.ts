@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const apiBase = process.env.API_BASE || "http://localhost:4000";
-  const body = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({})); // { username, password } 기대
 
   const res = await fetch(`${apiBase}/auth/login`, {
     method: "POST",
@@ -12,11 +12,8 @@ export async function POST(req: Request) {
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    return NextResponse.json(data, { status: res.status });
-  }
+  if (!res.ok) return NextResponse.json(data, { status: res.status });
 
-  // httpOnly 토큰 + UI용 role 쿠키
   const resp = NextResponse.json({ ok: true });
   resp.cookies.set("auth_token", data.token, {
     httpOnly: true,
