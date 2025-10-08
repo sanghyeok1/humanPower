@@ -3,6 +3,7 @@ import "@/styles/globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PartnerBanner from "@/components/PartnerBanner";
+import BannerGate from "@/components/BannerGate";
 import { getServerAccount } from "@/lib/auth";
 
 export default async function RootLayout({
@@ -16,8 +17,11 @@ export default async function RootLayout({
     <html lang="ko">
       <body>
         <Header />
-        {/* 페이지 전환(쿼리 변경)에도 마운트 유지 */}
-        <PartnerBanner account={me} />
+        {/* 홈(/)에서만 노출. searchParams 변경(동/카테고리/날짜)에도 경로는 "/" → 재마운트 없음 */}
+        <BannerGate>
+          <PartnerBanner account={me} />
+        </BannerGate>
+
         <main>{children}</main>
         <Footer />
       </body>
