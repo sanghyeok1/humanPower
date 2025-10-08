@@ -1,47 +1,35 @@
-// components/Header.tsx
-import Link from "next/link";
-import { cookies } from "next/headers";
+import HeaderClient from "./HeaderClient";
+import { getServerAccount } from "@/lib/auth";
 
 export default async function Header() {
-  const jar = await cookies();
-  const token = jar.get("auth_token")?.value;
-  const demo = jar.get("demo_login")?.value === "1";
-  const role = jar.get("auth_role")?.value ?? null;
-  const loggedIn = !!token || demo;
-
+  const me = await getServerAccount();
   return (
     <header className="site-header">
-      <div className="site-header__inner">
-        <Link href="/" className="brand">
-          <span className="brand__dot" />
-          <span className="brand__title">오늘 일감</span>
-          <span className="brand__sub">부천 · 동 단위</span>
-        </Link>
-
-        {loggedIn ? (
-          <nav className="nav" style={{ gap: 10 }}>
-            {role === "employer" && (
-              <Link href="/post/new" className="btn btn-primary">
-                공고 올리기
-              </Link>
-            )}
-            {/* ← 폼 제출 시 /api/auth/logout으로 POST 되고,
-                위에서 303 리다이렉트로 / 로 돌아갑니다. */}
-            <form action="/api/auth/logout" method="post">
-              <button type="submit" className="btn btn-ghost">
-                로그아웃
-              </button>
-            </form>
-          </nav>
-        ) : (
-          <nav className="nav">
-            <Link href="/login" className="nav-link">
+      <div className="inner">
+        <a className="logo" href="/">
+          휴먼파워
+        </a>
+        <nav className="nav">
+          <a href="/board/cat?cat=all">전체</a>
+          <a href="/board/cat?cat=rc">철근/형틀/콘크리트</a>
+          <a href="/board/cat?cat=int">내부마감</a>
+          <a href="/board/cat?cat=mech">설비/전기/배관</a>
+        </nav>
+        {!me ? (
+          <div className="auth">
+            <a className="btn" href="/login">
               로그인
-            </Link>
-            <Link href="/signup" className="btn btn-primary">
+            </a>
+            <a className="btn" href="/signup/seeker">
               회원가입
-            </Link>
-          </nav>
+            </a>
+          </div>
+        ) : (
+          <HeaderClient
+            displayName={me.display_name}
+            lat={me.lat ?? undefined}
+            lng={me.lng ?? undefined}
+          />
         )}
       </div>
     </header>

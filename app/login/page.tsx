@@ -1,89 +1,53 @@
 // app/login/page.tsx
-"use client";
-
-import { useEffect, useState } from "react";
-
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ returnTo?: string }>;
 }) {
-  const [sp, setSp] = useState<{ returnTo?: string }>({});
-  useEffect(() => {
-    searchParams.then(setSp);
-  }, [searchParams]);
-
-  const [username, setUsername] = useState(""); // ✅ 아이디
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username, password }), // ✅ 아이디로 로그인
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(j.error ?? "로그인 실패");
-        return;
-      }
-      const to = sp.returnTo && sp.returnTo.startsWith("/") ? sp.returnTo : "/";
-      window.location.href = to;
-    } catch {
-      setError("네트워크 오류");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const sp = await searchParams;
+  const returnTo = sp?.returnTo ?? "/";
+  const action = `/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`;
 
   return (
-    <main style={{ maxWidth: 420, margin: "40px auto", padding: 16 }}>
+    <main
+      style={{
+        maxWidth: 520,
+        margin: "32px auto",
+        padding: 16,
+        display: "grid",
+        gap: 16,
+      }}
+    >
       <h1 style={{ fontSize: 22, fontWeight: 800 }}>로그인</h1>
-      <form
-        onSubmit={onSubmit}
-        style={{ display: "grid", gap: 10, marginTop: 12 }}
-      >
+      <form method="POST" action={action} style={{ display: "grid", gap: 12 }}>
         <label>
           아이디
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="예: worker01"
             className="input"
+            name="username"
+            required
             autoComplete="username"
           />
         </label>
         <label>
           비밀번호
           <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••"
             className="input"
+            type="password"
+            name="password"
+            required
             autoComplete="current-password"
           />
         </label>
-        <button className="btn btn-primary" disabled={loading}>
-          {loading ? "확인 중…" : "로그인"}
-        </button>
-        {error && (
-          <div className="notice" style={{ color: "#b91c1c" }}>
-            {error}
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-primary" type="submit">
+            로그인
+          </button>
+          <a className="btn" href="/signup/seeker">
+            회원가입
+          </a>
+        </div>
       </form>
-      <div style={{ marginTop: 16 }}>
-        <a className="nav-link" href="/">
-          ← 홈으로
-        </a>
-      </div>
     </main>
   );
 }
