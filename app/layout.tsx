@@ -1,6 +1,7 @@
 // app/layout.tsx
 import "@/styles/globals.css";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import PartnerBanner from "@/components/PartnerBanner";
 import { getServerAccount } from "@/lib/auth";
 
@@ -9,15 +10,16 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const me = await getServerAccount(); // SSR에서 현재 계정 1회만 조회
+  const me = await getServerAccount(); // SSR 1회
 
   return (
     <html lang="ko">
       <body>
         <Header />
-        {/* ★ 레이아웃에 배치: 페이지 전환(쿼리 변경)에도 배너는 유지 */}
+        {/* 페이지 전환(쿼리 변경)에도 마운트 유지 */}
         <PartnerBanner account={me} />
-        {children}
+        <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );
