@@ -1,22 +1,23 @@
-import "../styles/globals.css";
+// app/layout.tsx
+import "@/styles/globals.css";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { ReactNode } from "react";
+import PartnerBanner from "@/components/PartnerBanner";
+import { getServerAccount } from "@/lib/auth";
 
-export const metadata = {
-  title: "바로일감 – 부천",
-  description: "동 단위 현장 파트너 광고 데모",
-};
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const me = await getServerAccount(); // SSR에서 현재 계정 1회만 조회
 
-export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
       <body>
         <Header />
-        <main style={{ maxWidth: 960, margin: "0 auto", padding: "16px" }}>
-          {children}
-        </main>
-        <Footer />
+        {/* ★ 레이아웃에 배치: 페이지 전환(쿼리 변경)에도 배너는 유지 */}
+        <PartnerBanner account={me} />
+        {children}
       </body>
     </html>
   );

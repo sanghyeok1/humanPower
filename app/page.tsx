@@ -1,6 +1,5 @@
 // app/page.tsx
 import { getServerAccount } from "@/lib/auth";
-import PartnerBanner from "@/components/PartnerBanner";
 import { postings } from "@/lib/mockdb";
 
 type Cat = "all" | "rc" | "int" | "mech";
@@ -27,7 +26,6 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ cat?: Cat; dong?: string; when?: When }>;
 }) {
-  const me = await getServerAccount();
   const sp = await searchParams;
 
   const cat: Cat = (sp?.cat ?? "all") as Cat;
@@ -84,8 +82,6 @@ export default async function HomePage({
 
   return (
     <main className="page">
-      <PartnerBanner account={me} />
-
       <section className="board">
         <div className="board__header">
           <h2>{catLabel(cat)}</h2>
