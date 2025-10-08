@@ -1,3 +1,4 @@
+// components/HeaderClient.tsx
 "use client";
 
 import { useState } from "react";
@@ -37,13 +38,8 @@ export default function HeaderClient({
               lng: pos.coords.longitude,
             }),
           });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok || !j?.ok) {
-            alert("위치 저장 실패");
-          } else {
-            // 새 좌표를 SSR 헤더/배너가 사용하도록 전체 새로고침
-            window.location.reload();
-          }
+          if (!r.ok) alert("위치 저장 실패");
+          window.location.reload();
         } finally {
           setSaving(false);
         }
@@ -52,34 +48,27 @@ export default function HeaderClient({
         alert("위치 권한을 허용해 주세요.");
         setSaving(false);
       },
-      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 7_000 }
+      { maximumAge: 60000, timeout: 7000 }
     );
   };
 
   const namePart = displayName ? `${displayName}님` : "로그인됨";
-  const coordPart =
-    typeof lat === "number" && typeof lng === "number"
-      ? ` (${lat.toFixed(5)}, ${lng.toFixed(5)})`
-      : "";
-
-  const needSave = !(typeof lat === "number" && typeof lng === "number");
+  const hasCoord = typeof lat === "number" && typeof lng === "number";
 
   return (
-    <div
-      className="auth"
-      style={{ display: "flex", gap: 8, alignItems: "center" }}
-    >
-      <span style={{ fontSize: 13 }}>
+    <div className="auth">
+      <span className="who">
         {namePart}
-        {coordPart}
+        {hasCoord ? (
+          <span className="coord">
+            ({lat!.toFixed(5)}, {lng!.toFixed(5)})
+          </span>
+        ) : (
+          <button className="link" onClick={saveMyLocation} disabled={saving}>
+            {saving ? "저장 중…" : "내 위치 저장"}
+          </button>
+        )}
       </span>
-
-      {needSave && (
-        <button className="btn" onClick={saveMyLocation} disabled={saving}>
-          {saving ? "저장 중…" : "내 위치 저장"}
-        </button>
-      )}
-
       <a className="btn" href="/post/new">
         공고 올리기
       </a>
