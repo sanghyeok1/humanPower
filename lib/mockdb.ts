@@ -28,7 +28,7 @@ export type Posting = {
   title: string;
   pay: string;
   startDate: string; // YYYY-MM-DD
-  createdAt: string;
+  createdAt: string; // YYYY-MM-DD
   summary?: string;
 };
 
@@ -66,6 +66,8 @@ export const accounts: Account[] = [
     password: "1111",
     display_name: "나상혁",
     phone: "01063779454",
+    lat: 37.51,
+    lng: 126.78,
   },
 ];
 

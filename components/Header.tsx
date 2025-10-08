@@ -7,7 +7,7 @@ export default async function Header() {
     <header className="site-header">
       <div className="inner">
         <a className="logo" href="/">
-          휴먼파워
+          바로일감
         </a>
         <nav className="nav">
           <a href="/board/cat?cat=all">전체</a>
