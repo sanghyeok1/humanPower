@@ -1,5 +1,5 @@
 // app/page.tsx
-import { getServerAccount } from "@/lib/auth";
+import Link from "next/link";
 import { postings } from "@/lib/mockdb";
 
 type Cat = "all" | "rc" | "int" | "mech";
@@ -14,6 +14,7 @@ function catLabel(cat: Cat) {
     ? "설비/전기/배관"
     : "전체";
 }
+
 function fmt(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -91,39 +92,39 @@ export default async function HomePage({
         {/* 1단: 카테고리 */}
         <div className="tabs">
           {catTabs.map((t) => (
-            <a
+            <Link
               key={t.key}
               href={buildUrl({ cat: t.key })}
               className={`tab ${t.key === cat ? "active" : ""}`}
             >
               {t.label}
-            </a>
+            </Link>
           ))}
         </div>
 
         {/* 2단: 동(지역) */}
         <div className="tabs subtle">
           {dongTabs.map((d) => (
-            <a
+            <Link
               key={d}
               href={buildUrl({ dong: d })}
               className={`chip ${d === dong ? "active" : ""}`}
             >
               {d}
-            </a>
+            </Link>
           ))}
         </div>
 
         {/* 3단: 날짜 */}
         <div className="tabs subtle">
           {whenTabs.map((w) => (
-            <a
+            <Link
               key={w.key}
               href={buildUrl({ when: w.key })}
               className={`chip ${w.key === when ? "active" : ""}`}
             >
               {w.label}
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -134,7 +135,7 @@ export default async function HomePage({
           ) : (
             items.map((p) => (
               <li key={p.id} className="post-item">
-                <a href={`/post/${p.id}`} className="post-link">
+                <Link href={`/post/${p.id}`} className="post-link">
                   <div className="post-meta">
                     {catLabel(p.cat as Cat)} · {p.dong} · 시작일 {p.startDate}
                   </div>
@@ -143,7 +144,7 @@ export default async function HomePage({
                     {p.pay}
                     {p.summary ? ` · ${p.summary}` : ""}
                   </div>
-                </a>
+                </Link>
               </li>
             ))
           )}
