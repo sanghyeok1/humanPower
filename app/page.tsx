@@ -1,6 +1,8 @@
 // app/page.tsx
 import Link from "next/link";
-import { postings } from "@/lib/mockdb";
+import { postings, jobPostings } from "@/lib/mockdb";
+import { CATEGORY_LABELS } from "@/types";
+import type { CategorySlug } from "@/types";
 
 type Cat = "all" | "rc" | "int" | "mech";
 type When = "all" | "today" | "plus2" | "plus3";
@@ -22,16 +24,32 @@ function fmt(d: Date) {
   return `${y}-${m}-${dd}`;
 }
 
+// CategorySlug를 Cat으로 변환
+function categoryToCat(category: CategorySlug): Cat {
+  if (category === "rebar_form_concrete") return "rc";
+  if (category === "interior_finish") return "int";
+  if (category === "mep") return "mech";
+  return "rc";
+}
+
+// 임금 포맷팅
+function formatWage(type: string, amount: number, notes?: string): string {
+  const typeLabel = type === "day" ? "일급" : type === "hour" ? "시급" : "월급";
+  const formatted = `${typeLabel} ${amount.toLocaleString()}원`;
+  return notes ? `${formatted} (${notes})` : formatted;
+}
+
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: Cat; dong?: string; when?: When }>;
+  searchParams: Promise<{ cat?: Cat; dong?: string; when?: When; page?: string }>;
 }) {
   const sp = await searchParams;
 
   const cat: Cat = (sp?.cat ?? "all") as Cat;
   const dong = sp?.dong ?? "전체";
   const when: When = (sp?.when ?? "all") as When;
+  const page = Number(sp?.page ?? "1");
 
   // 날짜 계산
   const now = new Date();
@@ -50,13 +68,46 @@ export default async function HomePage({
       ? fmt(d3)
       : null;
 
-  // 필터 적용
-  const items = postings.filter(
+  // 기존 postings 필터
+  const filteredOldPostings = postings.filter(
     (p) =>
       (cat === "all" || p.cat === cat) &&
       (dong === "전체" || p.dong === dong) &&
       (targetDate ? p.startDate === targetDate : true)
   );
+
+  // jobPostings를 postings 형식으로 변환 및 필터
+  const convertedJobPostings = jobPostings
+    .filter((jp) => {
+      const jpCat = categoryToCat(jp.category);
+      return (
+        (cat === "all" || jpCat === cat) &&
+        (dong === "전체" || jp.address_dong === dong) &&
+        (targetDate ? jp.start_date === targetDate : true)
+      );
+    })
+    .map((jp) => ({
+      id: jp.id,
+      cat: categoryToCat(jp.category),
+      dong: jp.address_dong,
+      title: jp.title,
+      pay: formatWage(jp.wage_type, jp.wage_amount, jp.wage_notes),
+      startDate: jp.start_date,
+      createdAt: jp.created_at,
+      summary: jp.required_positions,
+    }));
+
+  // 두 배열 합치기 (최신순 정렬)
+  const allPosts = [...filteredOldPostings, ...convertedJobPostings].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  // 페이지네이션
+  const perPage = 10;
+  const totalPages = Math.ceil(allPosts.length / perPage);
+  const currentPage = Math.max(1, Math.min(page, totalPages || 1));
+  const startIdx = (currentPage - 1) * perPage;
+  const items = allPosts.slice(startIdx, startIdx + perPage);
 
   // 탭 목록
   const catTabs: { key: Cat; label: string }[] = [
@@ -74,11 +125,12 @@ export default async function HomePage({
   ];
 
   // URL builder
-  const buildUrl = (next: Partial<{ cat: Cat; dong: string; when: When }>) => {
+  const buildUrl = (next: Partial<{ cat: Cat; dong: string; when: When; page: number }>) => {
     const c = encodeURIComponent(next.cat ?? cat);
     const d = encodeURIComponent(next.dong ?? dong);
     const w = encodeURIComponent(next.when ?? when);
-    return `/?cat=${c}&dong=${d}&when=${w}`;
+    const p = next.page ?? currentPage;
+    return `/?cat=${c}&dong=${d}&when=${w}&page=${p}`;
   };
 
   return (
@@ -86,7 +138,7 @@ export default async function HomePage({
       <section className="board">
         <div className="board__header">
           <h2>{catLabel(cat)}</h2>
-          <span className="count">총 {items.length}건</span>
+          <span className="count">총 {allPosts.length}건</span>
         </div>
 
         {/* 1단: 카테고리 */}
@@ -149,6 +201,21 @@ export default async function HomePage({
             ))
           )}
         </ul>
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="pagination" style={{ marginTop: 20 }}>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <Link
+                key={p}
+                href={buildUrl({ page: p })}
+                className={`page-btn ${p === currentPage ? "page-btn--active" : ""}`}
+              >
+                {p}
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

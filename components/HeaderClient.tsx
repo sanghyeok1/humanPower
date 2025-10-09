@@ -5,10 +5,12 @@ import { useState } from "react";
 
 export default function HeaderClient({
   displayName,
+  role,
   lat,
   lng,
 }: {
   displayName?: string;
+  role?: string;
   lat?: number;
   lng?: number;
 }) {
@@ -69,8 +71,18 @@ export default function HeaderClient({
           </button>
         )}
       </span>
-      <a className="btn" href="/post/new">
-        공고 올리기
+      {role === "employer" && (
+        <a className="btn" href="/post/new">
+          공고 올리기
+        </a>
+      )}
+      {role === "seeker" && (
+        <a className="btn" href="/profile/new">
+          이력서/프로필 올리기
+        </a>
+      )}
+      <a className="btn" href="/mypage">
+        마이페이지
       </a>
       <button className="btn" onClick={onLogout}>
         로그아웃

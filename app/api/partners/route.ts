@@ -21,6 +21,7 @@ export async function GET(req: Request) {
       const km = haversineKm(lat, lng, p.lat, p.lng);
       return { ...p, distanceKm: km };
     })
+    .filter((p) => p.distanceKm <= 5) // 반경 5km 이내만 필터링
     .sort((a, b) => a.distanceKm! - b.distanceKm!);
 
   return NextResponse.json({ items, center: { lat, lng } });

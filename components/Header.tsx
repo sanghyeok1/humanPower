@@ -40,6 +40,7 @@ export default async function Header() {
         ) : (
           <HeaderClient
             displayName={me.display_name}
+            role={me.role}
             lat={me.lat ?? undefined}
             lng={me.lng ?? undefined}
           />

@@ -10,6 +10,15 @@ export async function signToken(userId: number) {
   });
 }
 
+export function verifyToken(token: string) {
+  const secret = process.env.AUTH_JWT_SECRET || "dev-secret";
+  try {
+    return jwt.verify(token, secret);
+  } catch {
+    return null;
+  }
+}
+
 export type MeAccount = {
   id: number;
   role: string;

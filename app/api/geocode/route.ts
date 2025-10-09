@@ -9,11 +9,23 @@ export async function GET(req: Request) {
   }
 
   const REST = process.env.KAKAO_REST_KEY?.trim(); // 서버 전용 REST 키
-  if (!REST) {
-    return NextResponse.json(
-      { ok: false, error: "missing KAKAO_REST_KEY" },
-      { status: 500 }
-    );
+
+  // 임시: 카카오 API 키가 없거나 유효하지 않으면 더미 좌표 반환 (부천시 중심)
+  if (!REST || REST.startsWith("sdfsdf")) {
+    // 부천시 중심 좌표에서 약간 랜덤하게 생성
+    const baseLat = 37.503;
+    const baseLng = 126.766;
+    const randomLat = baseLat + (Math.random() - 0.5) * 0.02;
+    const randomLng = baseLng + (Math.random() - 0.5) * 0.02;
+
+    return NextResponse.json({
+      lat: Number(randomLat.toFixed(6)),
+      lng: Number(randomLng.toFixed(6)),
+      address_type: "ROAD_ADDR",
+      road_address: query,
+      address: query,
+      _note: "Using dummy coordinates (KAKAO_REST_KEY not configured)",
+    });
   }
 
   const url =

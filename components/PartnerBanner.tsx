@@ -70,6 +70,18 @@ export default function PartnerBanner({
 
   // 마지막으로 처리한 좌표키(동일하면 스킵)
   const lastKeyRef = useRef<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -280, behavior: "smooth" });
+    }
+  };
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 280, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     const g = globalThis as any;
@@ -138,20 +150,27 @@ export default function PartnerBanner({
       <div className="partner-banner__inner">
         <div className="partner-banner__header">
           <h2>현장 파트너 광고</h2>
-          <p>{subtitle}</p>
+          <p>{subtitle} · 반경 5km 이내</p>
         </div>
 
         {loading && !partners.length ? (
           <div className="skeleton-row">불러오는 중…</div>
+        ) : partners.length === 0 ? (
+          <div className="empty">근처 파트너가 아직 없어요.</div>
         ) : (
-          <div className="cards">
-            {partners.length === 0 ? (
-              <div className="empty">근처 파트너가 아직 없어요.</div>
-            ) : (
-              partners.map((p) => (
+          <div className="cards-wrap">
+            <button
+              className="scroll-btn left"
+              onClick={scrollLeft}
+              aria-label="왼쪽 스크롤"
+            >
+              ‹
+            </button>
+            <div className="cards-row" ref={scrollRef}>
+              {partners.map((p) => (
                 <a
                   key={p.id}
-                  className="card"
+                  className="card card--h"
                   href={p.link_url ?? "#"}
                   target="_blank"
                   rel="noreferrer"
@@ -175,8 +194,15 @@ export default function PartnerBanner({
                     ) : null}
                   </div>
                 </a>
-              ))
-            )}
+              ))}
+            </div>
+            <button
+              className="scroll-btn right"
+              onClick={scrollRight}
+              aria-label="오른쪽 스크롤"
+            >
+              ›
+            </button>
           </div>
         )}
       </div>
