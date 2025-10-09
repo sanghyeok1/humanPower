@@ -1274,6 +1274,26 @@ export const jobPostings = {
   },
 };
 
+// 공고 업데이트 함수
+export function updateJobPosting(id: string, employerId: number, updates: Partial<JobPosting>) {
+  const postings = readJobPostingsFile();
+  const posting = postings.find((p: any) => p.id === id && p.employer_id === employerId);
+  if (!posting) return null;
+  Object.assign(posting, { ...updates, updated_at: new Date().toISOString() });
+  writeJobPostingsFile(postings);
+  return posting;
+}
+
+// 공고 삭제 함수
+export function deleteJobPosting(id: string, employerId: number) {
+  const postings = readJobPostingsFile();
+  const idx = postings.findIndex((p: any) => p.id === id && p.employer_id === employerId);
+  if (idx === -1) return false;
+  postings.splice(idx, 1);
+  writeJobPostingsFile(postings);
+  return true;
+}
+
 // ─────────────────────────────────────────────────────────────
 // 이력서 데이터 (파일 기반)
 

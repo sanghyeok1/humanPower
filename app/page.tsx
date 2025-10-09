@@ -3,6 +3,8 @@ import Link from "next/link";
 import { postings, jobPostings } from "@/lib/mockdb";
 import { CATEGORY_LABELS } from "@/types";
 import type { CategorySlug } from "@/types";
+import { getServerAccount } from "@/lib/auth";
+import PostingActions from "@/components/PostingActions";
 
 type Cat = "all" | "rc" | "int" | "mech";
 type When = "all" | "today" | "plus2" | "plus3";
@@ -45,6 +47,7 @@ export default async function HomePage({
   searchParams: Promise<{ cat?: Cat; dong?: string; when?: When; page?: string }>;
 }) {
   const sp = await searchParams;
+  const me = await getServerAccount();
 
   const cat: Cat = (sp?.cat ?? "all") as Cat;
   const dong = sp?.dong ?? "전체";
@@ -95,6 +98,7 @@ export default async function HomePage({
       startDate: jp.start_date,
       createdAt: jp.created_at,
       summary: jp.required_positions,
+      employer_id: jp.employer_id, // 추가: 작성자 ID
     }));
 
   // 두 배열 합치기 (최신순 정렬)
@@ -197,6 +201,9 @@ export default async function HomePage({
                     {p.summary ? ` · ${p.summary}` : ""}
                   </div>
                 </Link>
+                {me && me.role === "employer" && (p as any).employer_id === me.id && (
+                  <PostingActions postingId={p.id} />
+                )}
               </li>
             ))
           )}

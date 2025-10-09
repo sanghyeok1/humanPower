@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CATEGORY_LABELS } from "@/types";
 
 type JobPosting = {
@@ -18,6 +19,7 @@ type JobPosting = {
 export default function PostingsManager() {
   const [postings, setPostings] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     fetchPostings();
@@ -35,6 +37,30 @@ export default function PostingsManager() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("정말 이 공고를 삭제하시겠습니까?")) return;
+
+    try {
+      const res = await fetch(`/api/my-postings/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert("공고가 삭제되었습니다.");
+        fetchPostings(); // 목록 새로고침
+      } else {
+        alert("삭제 실패: " + (data.error || "알 수 없는 오류"));
+      }
+    } catch (error) {
+      console.error("Failed to delete posting:", error);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  }
+
+  function handleEdit(id: string) {
+    router.push(`/post/edit/${id}`);
   }
 
   if (loading) {
@@ -92,8 +118,19 @@ export default function PostingsManager() {
                   <Link href={`/post/${posting.id}`} className="btn">
                     상세보기
                   </Link>
-                  <button className="btn">수정</button>
-                  <button className="btn">복제</button>
+                  <button
+                    className="btn"
+                    onClick={() => handleEdit(posting.id)}
+                  >
+                    수정
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={() => handleDelete(posting.id)}
+                    style={{ backgroundColor: "#ef4444", color: "#fff" }}
+                  >
+                    삭제
+                  </button>
                 </div>
               </div>
             </div>

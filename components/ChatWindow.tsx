@@ -20,6 +20,7 @@ export default function ChatWindow({ roomId }: { roomId: string }) {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const prevMessagesLengthRef = useRef(0);
 
   useEffect(() => {
     loadMessages();
@@ -28,7 +29,11 @@ export default function ChatWindow({ roomId }: { roomId: string }) {
   }, [roomId]);
 
   useEffect(() => {
-    scrollToBottom();
+    // 메시지가 새로 추가되었을 때만 스크롤 (사용자가 입력 중일 때는 포커스 유지)
+    if (messages.length > prevMessagesLengthRef.current) {
+      scrollToBottom();
+      prevMessagesLengthRef.current = messages.length;
+    }
   }, [messages]);
 
   const loadMessages = async () => {

@@ -6,6 +6,7 @@ import { CATEGORY_LABELS } from "@/types";
 import ApplyButton from "@/components/ApplyButton";
 import SaveButton from "@/components/SaveButton";
 import ChatButton from "@/components/ChatButton";
+import PostingDetailActions from "@/components/PostingDetailActions";
 
 export default async function PostDetailPage({
   params,
@@ -328,10 +329,8 @@ export default async function PostDetailPage({
           )}
           {isOwner && (
             <>
-              <button className="btn">✏️ 수정</button>
-              <button className="btn" style={{ color: "#ef4444" }}>
-                🗑️ 삭제
-              </button>
+              <a href={`/post/edit/${jobPost.id}`} className="btn">✏️ 수정</a>
+              <PostingDetailActions postingId={jobPost.id} />
             </>
           )}
         </div>
