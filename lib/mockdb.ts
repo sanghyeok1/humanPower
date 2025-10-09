@@ -175,6 +175,34 @@ export type CompletionRecord = {
   status: "completed" | "cancelled";
 };
 
+export type Resume = {
+  id: string;
+  seeker_id: number;
+  title: string;
+  name: string;
+  phone: string;
+  main_category: "rebar_form_concrete" | "interior_finish" | "mep";
+  skills: string[];
+  experience_years?: number;
+  recent_work_history?: Array<{
+    period: string;
+    site_name: string;
+    company_name: string;
+    role: string;
+    main_tasks: string;
+  }>;
+  equipment?: string[];
+  licenses?: string[];
+  certificates?: string[];
+  introduction?: string;
+  desired_wage_type?: "day" | "hour" | "month";
+  desired_wage_amount?: number;
+  available_shift?: string[];
+  available_start_date?: string;
+  created_at: string;
+  updated_at: string;
+};
+
 // ─────────────────────────────────────────────────────────────
 // 더미 계정(그대로)
 export const accounts: Account[] = [
@@ -1149,3 +1177,41 @@ export const jobPostings: JobPosting[] = [
     updated_at: new Date().toISOString(),
   },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// 이력서 데이터 (in-memory)
+export const resumes: Resume[] = [];
+
+// 이력서 유틸 함수
+export function getResumesBySeekerId(seekerId: number) {
+  return resumes.filter((r) => r.seeker_id === seekerId);
+}
+
+export function createResume(data: Omit<Resume, "id" | "created_at" | "updated_at">) {
+  const newResume: Resume = {
+    ...data,
+    id: `resume_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  resumes.push(newResume);
+  return newResume;
+}
+
+export function updateResume(id: string, seekerId: number, updates: Partial<Resume>) {
+  const resume = resumes.find((r) => r.id === id && r.seeker_id === seekerId);
+  if (!resume) return null;
+  Object.assign(resume, { ...updates, updated_at: new Date().toISOString() });
+  return resume;
+}
+
+export function deleteResume(id: string, seekerId: number) {
+  const idx = resumes.findIndex((r) => r.id === id && r.seeker_id === seekerId);
+  if (idx === -1) return false;
+  resumes.splice(idx, 1);
+  return true;
+}
+
+export function getResumeById(id: string) {
+  return resumes.find((r) => r.id === id) || null;
+}

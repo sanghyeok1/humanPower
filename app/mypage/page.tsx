@@ -12,9 +12,10 @@ import ApplicationsManager from "@/components/ApplicationsManager";
 import SavedPostingsManager from "@/components/SavedPostingsManager";
 import SeekerNotificationSettings from "@/components/SeekerNotificationSettings";
 import SeekerReputation from "@/components/SeekerReputation";
+import ResumeManager from "@/components/ResumeManager";
 
 type EmployerTab = "profile" | "postings" | "applicants" | "notifications" | "ratings" | "templates";
-type SeekerTab = "profile" | "applications" | "saved" | "notifications" | "reputation";
+type SeekerTab = "profile" | "resumes" | "applications" | "saved" | "notifications" | "reputation";
 
 export default async function MyPage({
   searchParams,
@@ -70,6 +71,7 @@ function SeekerMyPage({ account, tab }: { account: any; tab: SeekerTab }) {
 
         <div className="tabs" style={{ marginBottom: 20 }}>
           <Link href="/mypage?tab=profile" className={`tab ${tab === "profile" ? "active" : ""}`}>프로필</Link>
+          <Link href="/mypage?tab=resumes" className={`tab ${tab === "resumes" ? "active" : ""}`}>이력서 관리</Link>
           <Link href="/mypage?tab=applications" className={`tab ${tab === "applications" ? "active" : ""}`}>지원 현황</Link>
           <Link href="/mypage?tab=saved" className={`tab ${tab === "saved" ? "active" : ""}`}>저장/추천</Link>
           <Link href="/mypage?tab=notifications" className={`tab ${tab === "notifications" ? "active" : ""}`}>알림 설정</Link>
@@ -77,12 +79,22 @@ function SeekerMyPage({ account, tab }: { account: any; tab: SeekerTab }) {
         </div>
 
         {tab === "profile" && <SeekerProfileTab account={account} />}
+        {tab === "resumes" && <SeekerResumesTab />}
         {tab === "applications" && <SeekerApplicationsTab />}
         {tab === "saved" && <SeekerSavedTab />}
         {tab === "notifications" && <SeekerNotificationsTab account={account} />}
         {tab === "reputation" && <SeekerReputationTab />}
       </div>
     </main>
+  );
+}
+
+// ========== 구직자 이력서 관리 탭 ==========
+function SeekerResumesTab() {
+  return (
+    <div className="card">
+      <ResumeManager />
+    </div>
   );
 }
 

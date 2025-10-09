@@ -281,34 +281,36 @@ export default function SeekerProfileCreateForm({
   }
 
   return (
-    <form onSubmit={onSubmit} style={{ display: "grid", gap: 16 }}>
-      {/* 이름 + 표시명 */}
-      <div style={{ display: "grid", gap: 8 }}>
-        <label>
-          이름
-          <input className="input" value={userName} readOnly />
-        </label>
-        <label>
-          표시명(닉네임) <span style={{ color: "#dc2626" }}>*</span>
+    <form onSubmit={onSubmit}>
+      <h3 className="card-title">기본 정보</h3>
+      <div className="detail-grid" style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <label className="kv-key">이름</label>
+          <div className="kv-val">{userName}</div>
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">표시명(닉네임) <span style={{ color: "#dc2626" }}>*</span></label>
           <input
             ref={refs.displayName}
-            className="input"
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="예) 철근왕"
             maxLength={20}
+            required
           />
-        </label>
-      </div>
+        </div>
 
-      {/* 휴대폰 */}
-      <div style={{ display: "grid", gap: 8 }}>
-        <label>
-          휴대폰 <span style={{ color: "#dc2626" }}>*</span>
+        <div className="kv">
+          <label className="kv-key">휴대폰 <span style={{ color: "#dc2626" }}>*</span></label>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               ref={refs.phone}
-              className="input"
+              type="tel"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", flex: 1 }}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="010-0000-0000"
@@ -319,90 +321,111 @@ export default function SeekerProfileCreateForm({
               onClick={demoVerifyPhone}
               disabled={!phoneValid || phoneVerified}
             >
-              {phoneVerified ? "인증됨" : "문자 인증"}
+              {phoneVerified ? "인증됨" : "인증"}
             </button>
           </div>
           {phoneVerified && (
             <div style={{ color: "#16a34a", fontSize: 12, marginTop: 4 }}>
-              전화번호가 인증되었습니다.
+              ✓ 전화번호가 인증되었습니다.
             </div>
           )}
-        </label>
+        </div>
       </div>
 
-      {/* 거점 주소 */}
-      <div style={{ display: "grid", gap: 8 }}>
-        <label>
-          거점 주소 (동) <span style={{ color: "#dc2626" }}>*</span>
-        </label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            className="input"
-            placeholder="우편번호"
-            value={postalCode}
-            readOnly
-            style={{ width: 140 }}
-          />
-          <button
-            ref={refs.addrBtn}
-            type="button"
-            className="btn"
-            onClick={openPostcode}
-          >
-            주소 찾기
-          </button>
-        </div>
-        <input
-          className="input"
-          placeholder="도로명 주소"
-          value={roadAddress}
-          readOnly
-        />
-        <input
-          className="input"
-          placeholder="동 (자동 추출)"
-          value={baseAddressDong}
-          onChange={(e) => setBaseAddressDong(e.target.value)}
-        />
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            className="input"
-            placeholder="위도"
-            value={baseLat ?? ""}
-            readOnly
-          />
-          <input
-            className="input"
-            placeholder="경도"
-            value={baseLng ?? ""}
-            readOnly
-          />
-        </div>
-        {!addressValid && roadAddress && (
-          <div style={{ color: "#dc2626", fontSize: 12 }}>
-            주소 선택 후 위/경도가 자동 입력되어야 합니다. (반경 매칭 제한)
+      <h3 className="card-title" style={{ marginTop: 24 }}>거점 주소</h3>
+      <div className="detail-grid" style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <label className="kv-key">우편번호 <span style={{ color: "#dc2626" }}>*</span></label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: 140 }}
+              placeholder="우편번호"
+              value={postalCode}
+              readOnly
+            />
+            <button
+              ref={refs.addrBtn}
+              type="button"
+              className="btn"
+              onClick={openPostcode}
+            >
+              주소 찾기
+            </button>
           </div>
-        )}
-        <label>
-          검색 반경 (km) <span style={{ color: "#dc2626" }}>*</span>
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">도로명 주소</label>
           <input
-            className="input"
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
+            placeholder="주소 찾기 버튼을 클릭하세요"
+            value={roadAddress}
+            readOnly
+          />
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">동/읍/면</label>
+          <input
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
+            placeholder="자동 추출"
+            value={baseAddressDong}
+            onChange={(e) => setBaseAddressDong(e.target.value)}
+          />
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">좌표</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", flex: 1 }}
+              placeholder="위도"
+              value={baseLat ?? ""}
+              readOnly
+            />
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", flex: 1 }}
+              placeholder="경도"
+              value={baseLng ?? ""}
+              readOnly
+            />
+          </div>
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">검색 반경 (km) <span style={{ color: "#dc2626" }}>*</span></label>
+          <input
             type="number"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
             value={searchRadiusKm}
             onChange={(e) => setSearchRadiusKm(e.target.value)}
             placeholder="예) 10"
             min="1"
             max="100"
           />
-        </label>
+        </div>
       </div>
+      {!addressValid && roadAddress && (
+        <div className="notice" style={{ marginBottom: 16, color: "#dc2626" }}>
+          주소 선택 후 위/경도가 자동 입력되어야 합니다.
+        </div>
+      )}
 
-      {/* 주 직종/기술 */}
-      <div style={{ display: "grid", gap: 8 }}>
-        <label>
-          주 직종 <span style={{ color: "#dc2626" }}>*</span>
+      <h3 className="card-title" style={{ marginTop: 24 }}>직종 및 기술</h3>
+      <div className="detail-grid" style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <label className="kv-key">주 직종 <span style={{ color: "#dc2626" }}>*</span></label>
           <select
-            className="input"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
             value={mainCategory}
             onChange={(e) => setMainCategory(e.target.value as CategorySlug)}
           >
@@ -412,118 +435,125 @@ export default function SeekerProfileCreateForm({
               </option>
             ))}
           </select>
-        </label>
-        <label>
-          세부 스킬 (쉼표로 구분)
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">세부 스킬 (쉼표로 구분)</label>
           <input
-            className="input"
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
             value={detailedSkills}
             onChange={(e) => setDetailedSkills(e.target.value)}
             placeholder="예) 형틀, 미장, 전기배선"
           />
-        </label>
+        </div>
       </div>
 
-      {/* 경력 */}
-      <div style={{ display: "grid", gap: 8 }}>
-        <label>
-          총 경력 (년)
+      <h3 className="card-title" style={{ marginTop: 24 }}>경력</h3>
+      <div className="detail-grid" style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <label className="kv-key">총 경력 (년)</label>
           <input
-            className="input"
             type="number"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
             value={totalExperienceYears}
             onChange={(e) => setTotalExperienceYears(e.target.value)}
             placeholder="예) 5"
             min="0"
             step="0.5"
           />
-        </label>
-
-        <div
-          style={{
-            borderTop: "1px solid #e5e7eb",
-            paddingTop: 12,
-            marginTop: 8,
-          }}
-        >
-          <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>
-            최근 작업 이력 (최대 3건)
-          </h4>
-          {recentWorkHistory.map((history, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: "grid",
-                gap: 6,
-                marginBottom: 12,
-                padding: 12,
-                border: "1px solid #e5e7eb",
-                borderRadius: 4,
-              }}
-            >
-              <input
-                className="input"
-                placeholder="기간 (예: 2024.01 - 2024.06)"
-                value={history.period}
-                onChange={(e) =>
-                  updateWorkHistory(idx, "period", e.target.value)
-                }
-              />
-              <input
-                className="input"
-                placeholder="현장명"
-                value={history.site_name}
-                onChange={(e) =>
-                  updateWorkHistory(idx, "site_name", e.target.value)
-                }
-              />
-              <input
-                className="input"
-                placeholder="업체명"
-                value={history.company_name}
-                onChange={(e) =>
-                  updateWorkHistory(idx, "company_name", e.target.value)
-                }
-              />
-              <input
-                className="input"
-                placeholder="역할"
-                value={history.role}
-                onChange={(e) =>
-                  updateWorkHistory(idx, "role", e.target.value)
-                }
-              />
-              <input
-                className="input"
-                placeholder="주요 작업"
-                value={history.main_tasks}
-                onChange={(e) =>
-                  updateWorkHistory(idx, "main_tasks", e.target.value)
-                }
-              />
-            </div>
-          ))}
         </div>
       </div>
 
-      {/* 희망 임금 */}
-      <div style={{ display: "grid", gap: 8 }}>
-        <label>
-          희망 임금 형태
+      <div style={{ marginBottom: 16 }}>
+        <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+          최근 작업 이력 (최대 3건)
+        </h4>
+        {recentWorkHistory.map((history, idx) => (
+          <div
+            key={idx}
+            style={{
+              display: "grid",
+              gap: 8,
+              marginBottom: 12,
+              padding: 12,
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              backgroundColor: "#f9fafb",
+            }}
+          >
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "8px 10px", width: "100%", backgroundColor: "#fff" }}
+              placeholder="기간 (예: 2024.01 - 2024.06)"
+              value={history.period}
+              onChange={(e) =>
+                updateWorkHistory(idx, "period", e.target.value)
+              }
+            />
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "8px 10px", width: "100%", backgroundColor: "#fff" }}
+              placeholder="현장명"
+              value={history.site_name}
+              onChange={(e) =>
+                updateWorkHistory(idx, "site_name", e.target.value)
+              }
+            />
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "8px 10px", width: "100%", backgroundColor: "#fff" }}
+              placeholder="업체명"
+              value={history.company_name}
+              onChange={(e) =>
+                updateWorkHistory(idx, "company_name", e.target.value)
+              }
+            />
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "8px 10px", width: "100%", backgroundColor: "#fff" }}
+              placeholder="역할"
+              value={history.role}
+              onChange={(e) =>
+                updateWorkHistory(idx, "role", e.target.value)
+              }
+            />
+            <input
+              type="text"
+              style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "8px 10px", width: "100%", backgroundColor: "#fff" }}
+              placeholder="주요 작업"
+              value={history.main_tasks}
+              onChange={(e) =>
+                updateWorkHistory(idx, "main_tasks", e.target.value)
+              }
+            />
+          </div>
+        ))}
+      </div>
+
+      <h3 className="card-title" style={{ marginTop: 24 }}>희망 임금</h3>
+      <div className="detail-grid" style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <label className="kv-key">임금 형태</label>
           <select
-            className="input"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
             value={desiredWageType}
             onChange={(e) => setDesiredWageType(e.target.value as WageType)}
           >
             <option value="day">일급</option>
             <option value="hour">시급</option>
           </select>
-        </label>
-        <label>
-          희망 임금 금액
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">희망 금액</label>
           <input
-            className="input"
             type="number"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
             value={desiredWageAmount}
             onChange={(e) => setDesiredWageAmount(e.target.value)}
             placeholder={
@@ -531,245 +561,245 @@ export default function SeekerProfileCreateForm({
             }
             min="0"
           />
-        </label>
-      </div>
-
-      {/* 가능 일정/시간대 */}
-      <div style={{ display: "grid", gap: 8 }}>
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={availableNow}
-            onChange={(e) => {
-              setAvailableNow(e.target.checked);
-              if (e.target.checked) setAvailableStartDate("");
-            }}
-          />
-          <span>즉시 가능</span>
-        </label>
-        {!availableNow && (
-          <label>
-            가능 시작일
-            <input
-              className="input"
-              type="date"
-              value={availableStartDate}
-              onChange={(e) => setAvailableStartDate(e.target.value)}
-            />
-          </label>
-        )}
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-            가능 시간대
-          </div>
-          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={availableShift.day}
-              onChange={(e) =>
-                setAvailableShift({ ...availableShift, day: e.target.checked })
-              }
-            />
-            <span>주간</span>
-          </label>
-          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={availableShift.night}
-              onChange={(e) =>
-                setAvailableShift({
-                  ...availableShift,
-                  night: e.target.checked,
-                })
-              }
-            />
-            <span>야간</span>
-          </label>
         </div>
       </div>
 
-      {/* 선택 사항 */}
-      <div
-        style={{
-          borderTop: "1px solid #e5e7eb",
-          paddingTop: 16,
-          marginTop: 8,
-        }}
-      >
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
-          선택 사항 (권장)
-        </h3>
-
-        <div style={{ display: "grid", gap: 12 }}>
-          <label>
-            프로필 사진 URL
-            <input
-              className="input"
-              value={profilePhoto}
-              onChange={(e) => setProfilePhoto(e.target.value)}
-              placeholder="https://..."
-            />
-          </label>
-
-          <label>
-            보유 장비/면허 (쉼표로 구분)
-            <input
-              className="input"
-              value={ownedEquipment}
-              onChange={(e) => setOwnedEquipment(e.target.value)}
-              placeholder="예) 안전모, 안전화, 1종 운전면허"
-            />
-          </label>
-
-          <label>
-            자격증/교육 (쉼표로 구분)
-            <input
-              className="input"
-              value={licenses}
-              onChange={(e) => setLicenses(e.target.value)}
-              placeholder="예) 안전교육 수료, 전기기능사"
-            />
-          </label>
-
-          <label>
-            한 줄 소개
-            <input
-              className="input"
-              value={introduction}
-              onChange={(e) => setIntroduction(e.target.value)}
-              placeholder="예) 꼼꼼하고 성실한 작업자입니다"
-              maxLength={100}
-            />
-          </label>
-        </div>
-      </div>
-
-      {/* 알림 설정 */}
-      <div
-        style={{
-          borderTop: "1px solid #e5e7eb",
-          paddingTop: 16,
-          marginTop: 8,
-        }}
-      >
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
-          알림 설정
-        </h3>
-
-        <label
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={notificationEnabled}
-            onChange={(e) => setNotificationEnabled(e.target.checked)}
-          />
-          <span>새 공고 알림 받기</span>
-        </label>
-
-        {notificationEnabled && (
-          <div style={{ display: "grid", gap: 12 }}>
-            <label>
-              알림 반경 (km)
+      <h3 className="card-title" style={{ marginTop: 24 }}>근무 가능 일정</h3>
+      <div className="detail-grid" style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <label className="kv-key">가능 시작일</label>
+          <div>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
               <input
-                className="input"
+                type="checkbox"
+                checked={availableNow}
+                onChange={(e) => {
+                  setAvailableNow(e.target.checked);
+                  if (e.target.checked) setAvailableStartDate("");
+                }}
+              />
+              <span>즉시 가능</span>
+            </label>
+            {!availableNow && (
+              <input
+                type="date"
+                style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
+                value={availableStartDate}
+                onChange={(e) => setAvailableStartDate(e.target.value)}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">가능 시간대</label>
+          <div>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+              <input
+                type="checkbox"
+                checked={availableShift.day}
+                onChange={(e) =>
+                  setAvailableShift({ ...availableShift, day: e.target.checked })
+                }
+              />
+              <span>주간</span>
+            </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={availableShift.night}
+                onChange={(e) =>
+                  setAvailableShift({
+                    ...availableShift,
+                    night: e.target.checked,
+                  })
+                }
+              />
+              <span>야간</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <h3 className="card-title" style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
+        선택 사항 (권장)
+      </h3>
+      <div className="detail-grid" style={{ marginBottom: 16 }}>
+        <div className="kv">
+          <label className="kv-key">프로필 사진 URL</label>
+          <input
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
+            value={profilePhoto}
+            onChange={(e) => setProfilePhoto(e.target.value)}
+            placeholder="https://..."
+          />
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">보유 장비/면허</label>
+          <input
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
+            value={ownedEquipment}
+            onChange={(e) => setOwnedEquipment(e.target.value)}
+            placeholder="예) 안전모, 안전화, 1종 운전면허 (쉼표로 구분)"
+          />
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">자격증/교육</label>
+          <input
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
+            value={licenses}
+            onChange={(e) => setLicenses(e.target.value)}
+            placeholder="예) 안전교육 수료, 전기기능사 (쉼표로 구분)"
+          />
+        </div>
+
+        <div className="kv">
+          <label className="kv-key">한 줄 소개</label>
+          <input
+            type="text"
+            className="kv-val"
+            style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
+            value={introduction}
+            onChange={(e) => setIntroduction(e.target.value)}
+            placeholder="예) 꼼꼼하고 성실한 작업자입니다"
+            maxLength={100}
+          />
+        </div>
+      </div>
+
+      <h3 className="card-title" style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
+        알림 설정
+      </h3>
+
+      <label
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={notificationEnabled}
+          onChange={(e) => setNotificationEnabled(e.target.checked)}
+        />
+        <span>새 공고 알림 받기</span>
+      </label>
+
+      {notificationEnabled && (
+        <div style={{ marginBottom: 16 }}>
+          <div className="detail-grid" style={{ marginBottom: 16 }}>
+            <div className="kv">
+              <label className="kv-key">알림 반경 (km)</label>
+              <input
                 type="number"
+                className="kv-val"
+                style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
                 value={notificationRadiusKm}
                 onChange={(e) => setNotificationRadiusKm(e.target.value)}
                 placeholder="예) 10"
                 min="1"
                 max="100"
               />
-            </label>
-
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                시작일 필터
-              </div>
-              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={notificationStartDateFilters.today}
-                  onChange={(e) =>
-                    setNotificationStartDateFilters({
-                      ...notificationStartDateFilters,
-                      today: e.target.checked,
-                    })
-                  }
-                />
-                <span>오늘 시작</span>
-              </label>
-              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={notificationStartDateFilters.tomorrow}
-                  onChange={(e) =>
-                    setNotificationStartDateFilters({
-                      ...notificationStartDateFilters,
-                      tomorrow: e.target.checked,
-                    })
-                  }
-                />
-                <span>내일 시작</span>
-              </label>
             </div>
 
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                카테고리 필터
-              </div>
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <label
-                  key={key}
-                  style={{ display: "flex", gap: 8, alignItems: "center" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={
-                      notificationCategoryFilters[key as CategorySlug] || false
-                    }
-                    onChange={(e) =>
-                      setNotificationCategoryFilters({
-                        ...notificationCategoryFilters,
-                        [key]: e.target.checked,
-                      })
-                    }
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-
-            <label>
-              최소 임금 (일급 기준)
+            <div className="kv">
+              <label className="kv-key">최소 임금 (일급 기준)</label>
               <input
-                className="input"
                 type="number"
+                className="kv-val"
+                style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 10px", width: "100%" }}
                 value={notificationWageMin}
                 onChange={(e) => setNotificationWageMin(e.target.value)}
                 placeholder="예) 150000"
                 min="0"
               />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+              시작일 필터
+            </h4>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+              <input
+                type="checkbox"
+                checked={notificationStartDateFilters.today}
+                onChange={(e) =>
+                  setNotificationStartDateFilters({
+                    ...notificationStartDateFilters,
+                    today: e.target.checked,
+                  })
+                }
+              />
+              <span>오늘 시작</span>
+            </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={notificationStartDateFilters.tomorrow}
+                onChange={(e) =>
+                  setNotificationStartDateFilters({
+                    ...notificationStartDateFilters,
+                    tomorrow: e.target.checked,
+                  })
+                }
+              />
+              <span>내일 시작</span>
             </label>
           </div>
-        )}
-      </div>
+
+          <div>
+            <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+              카테고리 필터
+            </h4>
+            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+              <label
+                key={key}
+                style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}
+              >
+                <input
+                  type="checkbox"
+                  checked={
+                    notificationCategoryFilters[key as CategorySlug] || false
+                  }
+                  onChange={(e) =>
+                    setNotificationCategoryFilters({
+                      ...notificationCategoryFilters,
+                      [key]: e.target.checked,
+                    })
+                  }
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {msg && (
         <div
           className="notice"
-          style={{ color: msg.includes("등록") ? "#16a34a" : "#dc2626" }}
+          style={{
+            marginTop: 16,
+            marginBottom: 16,
+            color: msg.includes("등록") ? "#16a34a" : "#dc2626"
+          }}
         >
           {msg}
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 24, paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
         <button className="btn btn-primary" type="submit" disabled={saving}>
           {saving ? "등록 중…" : "프로필 등록"}
         </button>

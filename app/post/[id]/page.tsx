@@ -3,6 +3,7 @@ import { getServerAccount } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { postings, jobPostings } from "@/lib/mockdb";
 import { CATEGORY_LABELS } from "@/types";
+import ApplyButton from "@/components/ApplyButton";
 
 export default async function PostDetailPage({
   params,
@@ -320,7 +321,7 @@ export default async function PostDetailPage({
               </a>
               <button className="btn">💬 채팅 문의</button>
               <button className="btn">❤️ 찜하기</button>
-              <button className="btn">📝 지원하기</button>
+              <ApplyButton postingId={jobPost.id} />
             </>
           )}
           {isOwner && (
