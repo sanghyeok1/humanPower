@@ -42,6 +42,9 @@ pnpm-debug.log*
 !/.env.example
 !/server/.env.example
 
+# --- data: JSON 파일 기반 데이터 저장소 ---
+/data/
+
 # --- TypeScript / Next ---
 # next-env.d.ts 는 커밋하는 게 좋음 (Ambient types)
 # next.js 템플릿도 이 파일을 버전관리함

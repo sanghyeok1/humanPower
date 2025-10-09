@@ -26,10 +26,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 401 });
   }
 
-  // 내 지원 내역만 필터
-  const myApps = applications.filter((a) => a.seeker_id === user.id);
+  // applicants 배열에서 내 지원 내역 가져오기
+  const myApplicants = applicants.filter((a) => a.applicant_id === user.id);
 
-  return NextResponse.json({ applications: myApps });
+  // ApplicationsManager가 기대하는 형식으로 변환
+  const myApplications = myApplicants.map((app) => {
+    const posting = jobPostings.find((jp) => jp.id === app.posting_id);
+    return {
+      id: app.id,
+      posting_id: app.posting_id,
+      posting_title: app.posting_title,
+      posting_category: posting ? posting.category : "기타",
+      posting_pay: posting ? `${posting.wage_type === "day" ? "일급" : "시급"} ${posting.wage_amount.toLocaleString()}원` : "미정",
+      status: app.status as any,
+      applied_at: new Date(app.applied_at).toLocaleString("ko-KR"),
+      type: "applied" as const,
+    };
+  });
+
+  return NextResponse.json({ applications: myApplications });
 }
 
 export async function POST(req: NextRequest) {
@@ -99,6 +114,7 @@ export async function POST(req: NextRequest) {
     applicant_id: userId,
     applicant_name: resume.name,
     applicant_phone: resume.phone,
+    resume_id: resume_id,
     status: "applied" as const,
     applied_at: new Date().toISOString(),
     notes: `이력서: ${resume.title}`,

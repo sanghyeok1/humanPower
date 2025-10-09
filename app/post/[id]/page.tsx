@@ -4,6 +4,8 @@ import { redirect, notFound } from "next/navigation";
 import { postings, jobPostings } from "@/lib/mockdb";
 import { CATEGORY_LABELS } from "@/types";
 import ApplyButton from "@/components/ApplyButton";
+import SaveButton from "@/components/SaveButton";
+import ChatButton from "@/components/ChatButton";
 
 export default async function PostDetailPage({
   params,
@@ -319,8 +321,8 @@ export default async function PostDetailPage({
               >
                 📞 전화하기
               </a>
-              <button className="btn">💬 채팅 문의</button>
-              <button className="btn">❤️ 찜하기</button>
+              <ChatButton postingId={jobPost.id} employerId={jobPost.employer_id} />
+              <SaveButton postingId={jobPost.id} />
               <ApplyButton postingId={jobPost.id} />
             </>
           )}

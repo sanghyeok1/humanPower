@@ -1,4 +1,13 @@
 // lib/mockdb.ts
+import {
+  readResumes,
+  writeResumes,
+  readJobPostings as readJobPostingsFile,
+  writeJobPostings as writeJobPostingsFile,
+  readApplicants as readApplicantsFile,
+  writeApplicants as writeApplicantsFile,
+} from "./storage";
+
 // ─────────────────────────────────────────────────────────────
 // 타입
 export type Account = {
@@ -42,6 +51,7 @@ export type Account = {
     category_match?: boolean; // 선호 카테고리 공고 알림
     wage_match?: boolean; // 희망 임금 이상 공고 알림
   };
+  saved_postings?: string[]; // 저장한 공고 ID 목록
 };
 
 export type Partner = {
@@ -96,6 +106,7 @@ export type Applicant = {
   applicant_id: number; // 지원한 사람
   applicant_name: string;
   applicant_phone: string;
+  resume_id?: string; // 제출한 이력서
   status: "applied" | "invited" | "accepted" | "pending" | "rejected" | "noshow" | "completed";
   applied_at: string; // ISO datetime
   notes?: string; // 메모
@@ -143,6 +154,29 @@ export type SavedPosting = {
   posting_pay: string;
   posting_start_date: string;
   saved_at: string;
+};
+
+export type ChatRoom = {
+  id: string;
+  posting_id: string;
+  posting_title: string;
+  employer_id: number;
+  seeker_id: number;
+  last_message?: string;
+  last_message_at: string;
+  unread_count_employer: number;
+  unread_count_seeker: number;
+  created_at: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  room_id: string;
+  sender_id: number;
+  sender_role: "employer" | "seeker";
+  message: string;
+  created_at: string;
+  read: boolean;
 };
 
 export type ViewHistory = {
@@ -746,6 +780,12 @@ export const savedPostings: SavedPosting[] = [
   },
 ];
 
+// 채팅방 (in-memory)
+export const chatRooms: ChatRoom[] = [];
+
+// 채팅 메시지 (in-memory)
+export const chatMessages: ChatMessage[] = [];
+
 // 최근 본 공고 (in-memory)
 export const viewHistory: ViewHistory[] = [
   {
@@ -849,8 +889,8 @@ export const completionRecords: CompletionRecord[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────
-// 지원자 데이터 (in-memory)
-export const applicants: Applicant[] = [
+// 지원자 데이터 (파일 기반)
+const initialApplicants: Applicant[] = [
   {
     id: "app_1",
     posting_id: "p1",
@@ -894,6 +934,37 @@ export const applicants: Applicant[] = [
     ],
   },
 ];
+
+// applicants getter/setter (파일 기반)
+export const applicants = {
+  get all(): Applicant[] {
+    const apps = readApplicantsFile();
+    if (apps.length === 0) {
+      writeApplicantsFile(initialApplicants);
+      return initialApplicants;
+    }
+    return apps;
+  },
+  find(predicate: (applicant: Applicant) => boolean): Applicant | undefined {
+    return this.all.find(predicate);
+  },
+  filter(predicate: (applicant: Applicant) => boolean): Applicant[] {
+    return this.all.filter(predicate);
+  },
+  push(applicant: Applicant): void {
+    const apps = this.all;
+    apps.push(applicant);
+    writeApplicantsFile(apps);
+  },
+  update(id: string, employerId: number, updates: Partial<Applicant>): Applicant | null {
+    const apps = this.all;
+    const app = apps.find((a) => a.id === id && a.employer_id === employerId);
+    if (!app) return null;
+    Object.assign(app, updates);
+    writeApplicantsFile(apps);
+    return app;
+  },
+};
 
 // ─────────────────────────────────────────────────────────────
 // 유틸 함수(그대로)
@@ -975,47 +1046,47 @@ export function updateApplicantStatus(
   employerId: number,
   status: Applicant["status"]
 ) {
-  const app = applicants.find((a) => a.id === id && a.employer_id === employerId);
-  if (!app) return null;
-  app.status = status;
-  return app;
+  return applicants.update(id, employerId, { status });
 }
 
 export function updateApplicantNotes(id: string, employerId: number, notes: string) {
-  const app = applicants.find((a) => a.id === id && a.employer_id === employerId);
-  if (!app) return null;
-  app.notes = notes;
-  return app;
+  return applicants.update(id, employerId, { notes });
 }
 
 export function addCallLog(id: string, employerId: number, log: CallLog) {
-  const app = applicants.find((a) => a.id === id && a.employer_id === employerId);
+  const apps = applicants.all;
+  const app = apps.find((a) => a.id === id && a.employer_id === employerId);
   if (!app) return null;
   if (!app.call_logs) app.call_logs = [];
   app.call_logs.push(log);
+  writeApplicantsFile(apps);
   return app;
 }
 
 export function toggleApplicantFavorite(id: string, employerId: number) {
-  const app = applicants.find((a) => a.id === id && a.employer_id === employerId);
+  const apps = applicants.all;
+  const app = apps.find((a) => a.id === id && a.employer_id === employerId);
   if (!app) return null;
   app.is_favorite = !app.is_favorite;
+  writeApplicantsFile(apps);
   return app;
 }
 
 export function toggleApplicantBlacklist(id: string, employerId: number) {
-  const app = applicants.find((a) => a.id === id && a.employer_id === employerId);
+  const apps = applicants.all;
+  const app = apps.find((a) => a.id === id && a.employer_id === employerId);
   if (!app) return null;
   app.is_blacklist = !app.is_blacklist;
+  writeApplicantsFile(apps);
   return app;
 }
 
 export function getFavoriteApplicants(employerId: number) {
-  return applicants.filter((a) => a.employer_id === employerId && a.is_favorite);
+  return applicants.filter((a) => a.employer_id === employerId && a.is_favorite === true);
 }
 
 export function getBlacklistApplicants(employerId: number) {
-  return applicants.filter((a) => a.employer_id === employerId && a.is_blacklist);
+  return applicants.filter((a) => a.employer_id === employerId && a.is_blacklist === true);
 }
 
 // 알림 설정 유틸
@@ -1122,7 +1193,8 @@ export type JobPosting = {
   updated_at: string;
 };
 
-export const jobPostings: JobPosting[] = [
+// 초기 데이터 (처음 실행시에만 사용)
+const initialJobPostings: JobPosting[] = [
   {
     id: "jp1",
     employer_id: 3,
@@ -1178,16 +1250,41 @@ export const jobPostings: JobPosting[] = [
   },
 ];
 
+// jobPostings getter/setter (파일 기반)
+export const jobPostings = {
+  get all(): JobPosting[] {
+    const postings = readJobPostingsFile();
+    if (postings.length === 0) {
+      // 처음 실행시 초기 데이터 저장
+      writeJobPostingsFile(initialJobPostings);
+      return initialJobPostings;
+    }
+    return postings;
+  },
+  find(predicate: (posting: JobPosting) => boolean): JobPosting | undefined {
+    return this.all.find(predicate);
+  },
+  filter(predicate: (posting: JobPosting) => boolean): JobPosting[] {
+    return this.all.filter(predicate);
+  },
+  push(posting: JobPosting): void {
+    const postings = this.all;
+    postings.push(posting);
+    writeJobPostingsFile(postings);
+  },
+};
+
 // ─────────────────────────────────────────────────────────────
-// 이력서 데이터 (in-memory)
-export const resumes: Resume[] = [];
+// 이력서 데이터 (파일 기반)
 
 // 이력서 유틸 함수
 export function getResumesBySeekerId(seekerId: number) {
-  return resumes.filter((r) => r.seeker_id === seekerId);
+  const resumes = readResumes();
+  return resumes.filter((r: any) => r.seeker_id === seekerId);
 }
 
 export function createResume(data: Omit<Resume, "id" | "created_at" | "updated_at">) {
+  const resumes = readResumes();
   const newResume: Resume = {
     ...data,
     id: `resume_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -1195,23 +1292,29 @@ export function createResume(data: Omit<Resume, "id" | "created_at" | "updated_a
     updated_at: new Date().toISOString(),
   };
   resumes.push(newResume);
+  writeResumes(resumes);
   return newResume;
 }
 
 export function updateResume(id: string, seekerId: number, updates: Partial<Resume>) {
-  const resume = resumes.find((r) => r.id === id && r.seeker_id === seekerId);
+  const resumes = readResumes();
+  const resume = resumes.find((r: any) => r.id === id && r.seeker_id === seekerId);
   if (!resume) return null;
   Object.assign(resume, { ...updates, updated_at: new Date().toISOString() });
+  writeResumes(resumes);
   return resume;
 }
 
 export function deleteResume(id: string, seekerId: number) {
-  const idx = resumes.findIndex((r) => r.id === id && r.seeker_id === seekerId);
+  const resumes = readResumes();
+  const idx = resumes.findIndex((r: any) => r.id === id && r.seeker_id === seekerId);
   if (idx === -1) return false;
   resumes.splice(idx, 1);
+  writeResumes(resumes);
   return true;
 }
 
 export function getResumeById(id: string) {
-  return resumes.find((r) => r.id === id) || null;
+  const resumes = readResumes();
+  return resumes.find((r: any) => r.id === id) || null;
 }

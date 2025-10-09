@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ResumeViewModal from "./ResumeViewModal";
 
 type Applicant = {
   id: string;
@@ -8,6 +9,7 @@ type Applicant = {
   posting_title: string;
   applicant_name: string;
   applicant_phone: string;
+  resume_id?: string;
   status: "applied" | "invited" | "accepted" | "pending" | "rejected" | "noshow" | "completed";
   applied_at: string;
   notes?: string;
@@ -24,6 +26,10 @@ export default function ApplicantManager() {
   const [noteText, setNoteText] = useState("");
   const [callLogText, setCallLogText] = useState("");
   const [showCallLogForm, setShowCallLogForm] = useState<string | null>(null);
+  const [viewingResume, setViewingResume] = useState<{
+    resumeId: string;
+    applicantId: string;
+  } | null>(null);
 
   useEffect(() => {
     loadApplicants();
@@ -126,6 +132,22 @@ export default function ApplicantManager() {
       loadApplicants();
     } catch (err) {
       alert("블랙리스트 변경 실패");
+    }
+  };
+
+  const handleResumeStatusChange = async (status: "accepted" | "rejected") => {
+    if (!viewingResume) return;
+
+    try {
+      await fetch(`/api/applicants/${viewingResume.applicantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_status", status }),
+      });
+      setViewingResume(null);
+      loadApplicants();
+    } catch (err) {
+      alert("상태 변경 실패");
     }
   };
 
@@ -317,6 +339,19 @@ export default function ApplicantManager() {
 
                 {/* 액션 버튼 */}
                 <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                  {app.resume_id && (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() =>
+                        setViewingResume({
+                          resumeId: app.resume_id!,
+                          applicantId: app.id,
+                        })
+                      }
+                    >
+                      📄 이력서 보기
+                    </button>
+                  )}
                   <button
                     className="btn"
                     onClick={() => {
@@ -378,6 +413,16 @@ export default function ApplicantManager() {
           ))
         )}
       </div>
+
+      {/* 이력서 보기 모달 */}
+      {viewingResume && (
+        <ResumeViewModal
+          resumeId={viewingResume.resumeId}
+          applicantId={viewingResume.applicantId}
+          onClose={() => setViewingResume(null)}
+          onStatusChange={handleResumeStatusChange}
+        />
+      )}
     </div>
   );
 }

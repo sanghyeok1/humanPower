@@ -81,6 +81,9 @@ export default function HeaderClient({
           이력서/프로필 올리기
         </a>
       )}
+      <a className="btn" href="/chat">
+        💬 채팅
+      </a>
       <a className="btn" href="/mypage">
         마이페이지
       </a>

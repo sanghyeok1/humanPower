@@ -13,6 +13,7 @@ import SavedPostingsManager from "@/components/SavedPostingsManager";
 import SeekerNotificationSettings from "@/components/SeekerNotificationSettings";
 import SeekerReputation from "@/components/SeekerReputation";
 import ResumeManager from "@/components/ResumeManager";
+import PostingsManager from "@/components/PostingsManager";
 
 type EmployerTab = "profile" | "postings" | "applicants" | "notifications" | "ratings" | "templates";
 type SeekerTab = "profile" | "resumes" | "applications" | "saved" | "notifications" | "reputation";
@@ -52,7 +53,7 @@ function EmployerMyPage({ account, tab }: { account: any; tab: EmployerTab }) {
         </div>
 
         {tab === "profile" && <ProfileTab account={account} />}
-        {tab === "postings" && <PostingsTab />}
+        {tab === "postings" && <PostingsManager />}
         {tab === "templates" && <TemplateManager />}
         {tab === "applicants" && <ApplicantManager />}
         {tab === "notifications" && <NotificationsTab account={account} />}
@@ -194,88 +195,6 @@ function ProfileTab({ account }: { account: any }) {
         {account.lat && account.lng
           ? `위도 ${account.lat.toFixed(5)}, 경도 ${account.lng.toFixed(5)}`
           : "미설정 (헤더에서 '내 위치 저장' 클릭)"}
-      </div>
-    </div>
-  );
-}
-
-// ============ 공고 관리 탭 ============
-function PostingsTab() {
-  const dummyPostings = [
-    {
-      id: "p1",
-      title: "철근 배근 보조 구함",
-      status: "게시",
-      createdAt: "2025-10-08",
-      applicants: 3,
-    },
-    {
-      id: "p2",
-      title: "내부마감 보조",
-      status: "일시중지",
-      createdAt: "2025-10-07",
-      applicants: 1,
-    },
-    {
-      id: "p3",
-      title: "배관 작업 인력",
-      status: "초안",
-      createdAt: "2025-10-06",
-      applicants: 0,
-    },
-  ];
-
-  return (
-    <div>
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h3 className="card-title">공고 관리</h3>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <button className="btn btn-primary">새 공고 작성</button>
-          <Link href="/mypage?tab=templates" className="btn">
-            템플릿 관리
-          </Link>
-        </div>
-      </div>
-
-      <div className="post-list">
-        {dummyPostings.map((p) => (
-          <div key={p.id} className="post-item">
-            <div style={{ padding: 12 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                }}
-              >
-                <div>
-                  <div className="post-title">{p.title}</div>
-                  <div className="post-meta">
-                    등록일: {p.createdAt} · 지원자: {p.applicants}명
-                  </div>
-                </div>
-                <span
-                  className={`badge ${
-                    p.status === "게시"
-                      ? ""
-                      : p.status === "초안"
-                      ? "badge--draft"
-                      : ""
-                  }`}
-                >
-                  {p.status}
-                </span>
-              </div>
-              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                <button className="btn">수정</button>
-                <button className="btn">복제</button>
-                <button className="btn">
-                  {p.status === "게시" ? "일시중지" : "게시하기"}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
