@@ -41,18 +41,16 @@ export async function GET(
   const messages = chatMessages.filter((msg) => msg.room_id === roomId);
 
   // 읽음 처리
-  messages.forEach((msg) => {
-    if (msg.sender_id !== userId) {
-      msg.read = true;
-    }
-  });
+  chatMessages.updateRead(roomId, userId);
 
   // 읽지 않은 메시지 수 초기화
+  const updateData: Partial<typeof room> = {};
   if (user.role === "employer") {
-    room.unread_count_employer = 0;
+    updateData.unread_count_employer = 0;
   } else {
-    room.unread_count_seeker = 0;
+    updateData.unread_count_seeker = 0;
   }
+  chatRooms.update(roomId, updateData);
 
   return NextResponse.json({ messages, current_user_id: userId });
 }
@@ -114,15 +112,19 @@ export async function POST(
   chatMessages.push(newMessage);
 
   // 채팅방 업데이트
-  room.last_message = message.trim();
-  room.last_message_at = newMessage.created_at;
+  const updateData: Partial<typeof room> = {
+    last_message: message.trim(),
+    last_message_at: newMessage.created_at,
+  };
 
   // 상대방 읽지 않은 메시지 수 증가
   if (user.role === "employer") {
-    room.unread_count_seeker += 1;
+    updateData.unread_count_seeker = room.unread_count_seeker + 1;
   } else {
-    room.unread_count_employer += 1;
+    updateData.unread_count_employer = room.unread_count_employer + 1;
   }
+
+  chatRooms.update(roomId, updateData);
 
   return NextResponse.json({ message: newMessage });
 }

@@ -1,6 +1,5 @@
 // app/page.tsx
 import Link from "next/link";
-import { postings, jobPostings } from "@/lib/mockdb";
 import { CATEGORY_LABELS } from "@/types";
 import type { CategorySlug } from "@/types";
 import { getServerAccount } from "@/lib/auth";
@@ -27,7 +26,7 @@ function fmt(d: Date) {
 }
 
 // CategorySlug를 Cat으로 변환
-function categoryToCat(category: CategorySlug): Cat {
+function categoryToCat(category: string): Cat {
   if (category === "rebar_form_concrete") return "rc";
   if (category === "interior_finish") return "int";
   if (category === "mep") return "mech";
@@ -41,6 +40,21 @@ function formatWage(type: string, amount: number, notes?: string): string {
   return notes ? `${formatted} (${notes})` : formatted;
 }
 
+// 백엔드에서 공고 데이터 가져오기
+async function fetchPostings() {
+  try {
+    const res = await fetch(`${process.env.API_BASE}/api/postings`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.postings || [];
+  } catch (error) {
+    console.error('Failed to fetch postings:', error);
+    return [];
+  }
+}
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -48,6 +62,9 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const me = await getServerAccount();
+
+  // 백엔드에서 공고 데이터 가져오기
+  const postings = await fetchPostings();
 
   const cat: Cat = (sp?.cat ?? "all") as Cat;
   const dong = sp?.dong ?? "전체";
@@ -71,40 +88,30 @@ export default async function HomePage({
       ? fmt(d3)
       : null;
 
-  // 기존 postings 필터
-  const filteredOldPostings = postings.filter(
-    (p) =>
-      (cat === "all" || p.cat === cat) &&
-      (dong === "전체" || p.dong === dong) &&
-      (targetDate ? p.startDate === targetDate : true)
-  );
+  // 백엔드에서 가져온 공고를 필터링 및 변환
+  const allPosts = postings
+    .filter((p: any) => {
+      const pCat = categoryToCat(p.category);
+      const pDong = p.dong || "전체";
+      const pStartDate = p.start_date ? fmt(new Date(p.start_date)) : null;
 
-  // jobPostings를 postings 형식으로 변환 및 필터
-  const convertedJobPostings = jobPostings
-    .filter((jp) => {
-      const jpCat = categoryToCat(jp.category);
       return (
-        (cat === "all" || jpCat === cat) &&
-        (dong === "전체" || jp.address_dong === dong) &&
-        (targetDate ? jp.start_date === targetDate : true)
+        (cat === "all" || pCat === cat) &&
+        (dong === "전체" || pDong === dong) &&
+        (targetDate ? pStartDate === targetDate : true)
       );
     })
-    .map((jp) => ({
-      id: jp.id,
-      cat: categoryToCat(jp.category),
-      dong: jp.address_dong,
-      title: jp.title,
-      pay: formatWage(jp.wage_type, jp.wage_amount, jp.wage_notes),
-      startDate: jp.start_date,
-      createdAt: jp.created_at,
-      summary: jp.required_positions,
-      employer_id: jp.employer_id, // 추가: 작성자 ID
-    }));
-
-  // 두 배열 합치기 (최신순 정렬)
-  const allPosts = [...filteredOldPostings, ...convertedJobPostings].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+    .map((p: any) => ({
+      id: p.id,
+      cat: categoryToCat(p.category),
+      dong: p.dong || "전체",
+      title: p.title,
+      pay: formatWage(p.wage_type, p.wage_amount),
+      startDate: p.start_date ? fmt(new Date(p.start_date)) : "",
+      createdAt: p.created_at,
+      summary: p.content || "",
+    }))
+    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // 페이지네이션
   const perPage = 10;

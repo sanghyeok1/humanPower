@@ -2,41 +2,35 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerAccount } from "@/lib/auth";
-import { updateAccountProfile } from "@/lib/mockdb";
 
 export async function POST(req: NextRequest) {
-  const me = await getServerAccount();
-  if (!me) {
+  const token = req.cookies.get("hp_token")?.value;
+  if (!token) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   try {
     const body = await req.json();
-    const {
-      display_name,
-      phone,
-      company_name,
-      contact_method,
-      radius_km,
-      preferred_categories,
-    } = body;
 
-    const updated = updateAccountProfile(me.id, {
-      display_name,
-      phone,
-      company_name,
-      contact_method,
-      radius_km: radius_km ? Number(radius_km) : undefined,
-      preferred_categories,
+    // 백엔드 API로 프록시
+    const res = await fetch(`${process.env.API_BASE}/api/me/profile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `hp_token=${token}`,
+      },
+      body: JSON.stringify(body),
     });
 
-    if (!updated) {
-      return NextResponse.json({ error: "update_failed" }, { status: 500 });
+    if (!res.ok) {
+      const error = await res.json();
+      return NextResponse.json(error, { status: res.status });
     }
 
-    return NextResponse.json({ success: true, account: updated });
+    const data = await res.json();
+    return NextResponse.json(data);
   } catch (err) {
+    console.error('Profile update error:', err);
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 }

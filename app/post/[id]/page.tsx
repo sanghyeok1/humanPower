@@ -1,12 +1,26 @@
 // app/post/[id]/page.tsx
 import { getServerAccount } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import { postings, jobPostings } from "@/lib/mockdb";
 import { CATEGORY_LABELS } from "@/types";
 import ApplyButton from "@/components/ApplyButton";
 import SaveButton from "@/components/SaveButton";
 import ChatButton from "@/components/ChatButton";
 import PostingDetailActions from "@/components/PostingDetailActions";
+
+// 백엔드에서 공고 상세 정보 가져오기
+async function fetchPosting(id: string) {
+  try {
+    const res = await fetch(`${process.env.API_BASE}/api/postings/${id}`, {
+      cache: 'no-store'
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.posting || null;
+  } catch (error) {
+    console.error('Failed to fetch posting:', error);
+    return null;
+  }
+}
 
 export default async function PostDetailPage({
   params,
@@ -16,75 +30,29 @@ export default async function PostDetailPage({
   const me = await getServerAccount();
   const { id } = await params;
 
-  // 기존 postings와 jobPostings 모두 검색
-  const oldPost = postings.find((p) => p.id === id);
-  const jobPost = jobPostings.find((jp) => jp.id === id);
+  // 백엔드에서 공고 상세 정보 가져오기
+  const jobPost = await fetchPosting(id);
 
-  if (!oldPost && !jobPost) notFound();
+  if (!jobPost) notFound();
 
   // 미로그인 → 로그인으로
   if (!me) {
     redirect(`/login?returnTo=${encodeURIComponent(`/post/${id}`)}`);
   }
 
-  // 기존 postings 표시 (기존 로직 유지)
-  if (oldPost) {
-    const catLabel =
-      oldPost.cat === "rc"
-        ? "철근/형틀/콘크리트"
-        : oldPost.cat === "int"
-        ? "내부마감"
-        : "설비/전기/배관";
-
-    return (
-      <main style={{ maxWidth: 720, margin: "24px auto", padding: "0 16px" }}>
-        <a href="/" className="btn" style={{ marginBottom: 12 }}>
-          ← 목록으로
-        </a>
-
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{oldPost.title}</h1>
-        <div style={{ color: "#6b7280", marginTop: 6 }}>
-          {catLabel} · {oldPost.dong} · 시작일 {oldPost.startDate}
-        </div>
-
-        <div
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            padding: 16,
-            marginTop: 16,
-          }}
-        >
-          <p style={{ margin: 0, fontSize: 16 }}>{oldPost.pay}</p>
-          {oldPost.summary && (
-            <p style={{ marginTop: 8, color: "#374151" }}>{oldPost.summary}</p>
-          )}
-        </div>
-
-        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-          <a className="btn btn-primary" href="tel:010-0000-0000">
-            전화하기
-          </a>
-          <a className="btn" href="#">
-            채팅 문의
-          </a>
-        </div>
-      </main>
-    );
-  }
-
-  // jobPostings 상세 표시
-  if (jobPost) {
-    const categoryLabel = CATEGORY_LABELS[jobPost.category];
+  // 공고 상세 표시
+    const categoryLabel = CATEGORY_LABELS[jobPost.category] || jobPost.category;
     const wageTypeLabel =
       jobPost.wage_type === "day"
         ? "일급"
         : jobPost.wage_type === "hour"
         ? "시급"
         : "월급";
-    const shiftLabel = jobPost.shift_type === "day" ? "주간" : "야간";
+    const shiftLabel = jobPost.shift_type === "day" ? "주간" : jobPost.shift_type === "night" ? "야간" : "주간";
 
-    const isOwner = me.role === "employer" && me.id === jobPost.employer_id;
+    // TODO: postings 테이블에 employer_id 추가 필요
+    // 임시로 employer만 수정/삭제 가능하도록 처리
+    const isOwner = me.role === "employer";
 
     return (
       <main style={{ maxWidth: 800, margin: "24px auto", padding: "0 16px" }}>
@@ -107,7 +75,7 @@ export default async function PostDetailPage({
           }}
         >
           <span>📁 {categoryLabel}</span>
-          <span>📍 {jobPost.address_dong}</span>
+          <span>📍 {jobPost.dong || jobPost.address_dong || "부천시"}</span>
           <span>📅 시작일: {jobPost.start_date}</span>
           {jobPost.shift_type && <span>🕐 {shiftLabel}</span>}
         </div>
@@ -143,10 +111,12 @@ export default async function PostDetailPage({
             gap: 12,
           }}
         >
+          {jobPost.required_positions && (
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>📋 필요 인원</div>
             <div>{jobPost.required_positions}</div>
           </div>
+          )}
 
           {jobPost.duration_days && (
             <div>
@@ -162,10 +132,12 @@ export default async function PostDetailPage({
             </div>
           )}
 
+          {(jobPost.address || jobPost.address_detail || jobPost.content) && (
           <div>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>📍 주소</div>
-            <div>{jobPost.address_detail}</div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>📍 주소/상세 내용</div>
+            <div>{jobPost.address_detail || jobPost.address || jobPost.content}</div>
           </div>
+          )}
         </div>
 
         {/* 제공 사항 */}
@@ -271,6 +243,7 @@ export default async function PostDetailPage({
         )}
 
         {/* 연락처 정보 */}
+        {(jobPost.contact_name || jobPost.contact_phone) && (
         <div
           style={{
             border: "1px solid #e5e7eb",
@@ -282,13 +255,14 @@ export default async function PostDetailPage({
         >
           <div style={{ fontWeight: 700, marginBottom: 8 }}>📞 연락처</div>
           <div style={{ display: "grid", gap: 6 }}>
-            <div>담당자: {jobPost.contact_name}</div>
-            <div>전화번호: {jobPost.contact_phone}</div>
+            {jobPost.contact_name && <div>담당자: {jobPost.contact_name}</div>}
+            {jobPost.contact_phone && <div>전화번호: {jobPost.contact_phone}</div>}
             {jobPost.contact_hours && (
               <div>통화 가능 시간: {jobPost.contact_hours}</div>
             )}
           </div>
         </div>
+        )}
 
         {/* 결제 방식 */}
         {jobPost.payment_method && (
@@ -314,20 +288,24 @@ export default async function PostDetailPage({
 
         {/* 액션 버튼 */}
         <div style={{ marginTop: 24, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {!isOwner && me.role === "seeker" && (
+          {me.role === "seeker" && (
             <>
+              <SaveButton postingId={jobPost.id} />
+              <ApplyButton postingId={jobPost.id} />
+              {jobPost.contact_phone && (
               <a
-                className="btn btn-primary"
+                className="btn"
                 href={`tel:${jobPost.contact_phone}`}
               >
                 📞 전화하기
               </a>
-              <ChatButton postingId={jobPost.id} employerId={jobPost.employer_id} />
-              <SaveButton postingId={jobPost.id} />
-              <ApplyButton postingId={jobPost.id} />
+              )}
+              <a className="btn" href={`/chat?postingId=${jobPost.id}`}>
+                💬 채팅 문의
+              </a>
             </>
           )}
-          {isOwner && (
+          {me.role === "employer" && (
             <>
               <a href={`/post/edit/${jobPost.id}`} className="btn">✏️ 수정</a>
               <PostingDetailActions postingId={jobPost.id} />
@@ -352,7 +330,4 @@ export default async function PostDetailPage({
         </div>
       </main>
     );
-  }
-
-  return notFound();
 }

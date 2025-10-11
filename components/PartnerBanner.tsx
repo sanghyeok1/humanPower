@@ -86,14 +86,19 @@ export default function PartnerBanner({
   useEffect(() => {
     const g = globalThis as any;
 
-    // 0) 이미 같은 좌표를 처리했고, 세션 캐시도 있으면 완전 스킵
+    // 0) 이미 같은 좌표를 처리했고, 세션 캐시도 있으면 캐시 데이터 설정
     const sessionItems0 = loadCache(target.lat, target.lng);
     if (g.__hpPartnerLastKey === locKey && sessionItems0) {
+      // 상태가 비어있으면 캐시로 채우기
+      if (partners.length === 0) {
+        setPartners(sessionItems0);
+        setSubtitle(`${target.label} · 캐시`);
+      }
       return;
     }
 
-    // 1) 같은 좌표키면 스킵
-    if (lastKeyRef.current === locKey) return;
+    // 1) 같은 좌표키면 스킵 (단, 데이터가 있을 때만)
+    if (lastKeyRef.current === locKey && partners.length > 0) return;
 
     // 2) 먼저 캐시로 즉시 그림 + 전역키 기록, 그리고 여기서 끝 (fetch 안 감)
     if (sessionItems0) {
@@ -143,6 +148,7 @@ export default function PartnerBanner({
       stop = true;
     };
     // 위치 정보만 의존 → 탭/검색 파라미터 변경으로는 재요청 안 함
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locKey, target.label, target.lat, target.lng]);
 
   return (

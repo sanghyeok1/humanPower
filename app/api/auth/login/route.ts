@@ -2,8 +2,6 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { findAccountByUsername } from "@/lib/mockdb";
-import { signToken } from "@/lib/auth";
 
 type Creds = { username: string; password: string };
 
@@ -27,26 +25,45 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const returnTo = url.searchParams.get("returnTo") || "/";
 
-  const { username, password } = await readCreds(req);
-  const acc = findAccountByUsername(username);
-  if (!acc || acc.password !== password) {
+  try {
+    // 폼 데이터 읽기
+    const { username, password } = await readCreds(req);
+
+    // 백엔드 로그인 API 호출
+    const backendRes = await fetch(`${process.env.API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (!backendRes.ok) {
+      return NextResponse.json(
+        { ok: false, error: "invalid_credentials" },
+        { status: 401 }
+      );
+    }
+
+    // 백엔드에서 설정한 쿠키 가져오기
+    const setCookieHeader = backendRes.headers.get('set-cookie');
+
+    // 리다이렉트 응답 생성
+    const res = NextResponse.redirect(new URL(returnTo, req.url));
+
+    // 백엔드에서 받은 쿠키를 프론트엔드 응답에 설정
+    if (setCookieHeader) {
+      res.headers.set('set-cookie', setCookieHeader);
+    }
+
+    return res;
+  } catch (error) {
+    console.error('Login error:', error);
     return NextResponse.json(
-      { ok: false, error: "invalid_credentials" },
-      { status: 401 }
+      { ok: false, error: "server_error" },
+      { status: 500 }
     );
   }
-
-  const token = await signToken(acc.id);
-
-  // ★ 같은 응답에서 쿠키 세팅 + 서버 리다이렉트
-  const res = NextResponse.redirect(new URL(returnTo, req.url));
-  res.cookies.set("hp_token", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-  return res;
 }
 
 export async function GET() {

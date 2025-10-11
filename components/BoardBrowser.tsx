@@ -4,7 +4,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CATEGORY_LABELS, type CategorySlug } from "@/types";
-import { POSTINGS } from "@/data/postings";
+
+// TODO: 이 컴포넌트는 더 이상 사용되지 않을 수 있습니다.
+// 백엔드 API를 사용하도록 리팩토링이 필요합니다.
+const POSTINGS: any[] = [];
 
 // ---- 옵션들 ----
 const CAT_ALL = "all" as const;
